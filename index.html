@@ -436,7 +436,7 @@ function solMovementKey(e,down){
   if(!game)return;
   const k=e.key.toLowerCase();
   if(!Object.prototype.hasOwnProperty.call(keys,k))return;
-  if(e.target && (e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.isContentEditable'))return;
+  if(e.target && (e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.isContentEditable))return;
   e.preventDefault();
   e.stopPropagation();
   keys[k]=down;
