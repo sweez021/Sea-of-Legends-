@@ -134,8 +134,8 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:
 .scene-footer{margin-top:20px;padding:8px 15px;border:1px solid #9a752d;border-radius:12px;background:rgba(5,14,21,.82);color:#ffd166;text-align:center;font-size:11px;font-weight:900;letter-spacing:.6px}
 @media(max-width:650px){.menu-logo>div{font-size:42px}.wood-btn{min-height:56px;font-size:15px}.login-scene{justify-content:center}.modal-card{padding:20px}}
 
-#start{position:fixed;inset:0;z-index:9999;background:#061522}
-.splash{position:relative;width:100%;height:100%;min-height:100vh;background:url("sea_of_legends_menu.png") center/cover no-repeat;overflow:auto}
+#start{position:fixed;inset:0;width:100vw;height:100vh;z-index:9999;background:#061522;overflow:hidden}
+.splash{position:fixed;inset:0;width:100vw;height:100vh;min-height:0;background:url("sea_of_legends_menu.png") center center / 100% 100% no-repeat;overflow:hidden}
 .splash-dark{position:absolute;inset:0;background:rgba(0,0,0,.08);pointer-events:none}
 .click-menu{position:absolute;left:2%;bottom:18%;z-index:5;display:flex;flex-direction:column;gap:12px;width:min(330px,25vw)}
 .wood-button{cursor:pointer;padding:14px 18px;min-height:58px;border:3px solid #513115;border-radius:8px;background:linear-gradient(#d09a50,#8b5724 55%,#633917);color:#fff0c7;font-size:clamp(14px,1.5vw,20px);font-weight:1000;letter-spacing:1px;text-shadow:0 2px 3px #000;box-shadow:0 6px 0 #3b220f,0 12px 25px rgba(0,0,0,.35);transition:.15s}
@@ -197,7 +197,7 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:
   .zone-register{left:1%;top:60%;width:40%;height:10.5%}
   .zone-remember{left:1%;top:73%;width:40%;height:10%}
 }
-</style>
+html,body{width:100%;height:100%;overflow:hidden!important} body{margin:0}\n</style>
 </head>
 <body>
 <canvas id="game"></canvas>
