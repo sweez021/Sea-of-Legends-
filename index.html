@@ -253,7 +253,7 @@ html,body{width:100%;height:100%;overflow:hidden!important} body{margin:0}\n
     <div>XP <span id="xpText">0/100</span></div><div class="bar"><div id="xpFill" class="fill xp" style="width:0%"></div></div>
   </div>
   <div id="quest" class="panel"><h3>📜 Première mission</h3><div id="questText">Va parler au capitaine Rovan, puis élimine 3 bandits.</div><div style="margin-top:7px">Bandits : <b id="kills">0/3</b></div></div>
-  <div id="controls" class="panel">ZQSD / WASD ou flèches · E : interagir · ESPACE : attaquer · ZQSD pour le personnage · la caméra reste fixée sur ton personnage · molette pour zoomer/dézoomer · les PNJ restent à leur poste</div>
+  <div id="controls" class="panel">ZQSD / WASD ou flèches · E : interagir · ESPACE : attaquer · ZQSD pour le personnage · caméra toujours fixée sur lui · molette ↑ zoom · molette ↓ dézoom · les PNJ restent à leur poste</div>
   <div id="log" class="panel">Bienvenue à Port Azure.</div>
   <div id="actions"><button id="attack">⚔️ Attaquer</button><button id="interact" class="secondary">💬 Interagir</button></div><button id="logoutGame" class="logout-game" type="button">🚪 Déconnexion</button>
   <div id="mobile"><div class="dpad"><span></span><button data-k="up">▲</button><span></span><button data-k="left">◀</button><button data-k="down">▼</button><button data-k="right">▶</button></div></div>
@@ -393,21 +393,26 @@ function resize(){
   scale=devicePixelRatio; ctx.setTransform(scale,0,0,scale,0,0);
 }
 addEventListener('resize',resize); resize();
+/* ===== ZOOM CENTRÉ SUR LE PERSONNAGE ===== */
 addEventListener('wheel',e=>{
   if(!game)return;
   e.preventDefault();
-  const old=cameraZoom;
-  cameraZoom=clamp(cameraZoom+(e.deltaY<0?0.1:-0.1),0.55,1.8);
-  const rect=c.getBoundingClientRect();
-  const mx=e.clientX-rect.left, my=e.clientY-rect.top;
-  /* Keep the point under the mouse under the mouse while zooming. */
-  const wx=cam.x+mx/old, wy=cam.y+my/old;
-  cam.x=wx-mx/cameraZoom; cam.y=wy-my/cameraZoom;
-  cam.x=clamp(cam.x,0,Math.max(0,world.w-innerWidth/cameraZoom));
-  cam.y=clamp(cam.y,0,Math.max(0,world.h-innerHeight/cameraZoom));
+
+  const oldZoom=cameraZoom;
+  const step=e.deltaY<0 ? 0.12 : -0.12;
+  cameraZoom=clamp(cameraZoom+step,0.55,2.0);
+
+  /* La caméra reste TOUJOURS centrée sur le joueur.
+     Le zoom ne déplace donc jamais le point de vue vers la souris. */
+  const viewW=innerWidth/cameraZoom;
+  const viewH=innerHeight/cameraZoom;
+  cam.x=clamp(p.x-viewW/2,0,Math.max(0,world.w-viewW));
+  cam.y=clamp(p.y-viewH/2,0,Math.max(0,world.h-viewH));
+
   resize();
   draw();
 },{passive:false});
+
 
 
 
@@ -697,7 +702,7 @@ function tick(t){
   /* Caméra de jeu : le joueur se déplace réellement à l'écran.
      Elle ne colle plus le joueur au centre, ce qui donnait l'impression
      que les PNJ bougeaient quand ZQSD était pressé. */
-  /* CAMERA FIXÉE SUR LE PERSONNAGE */
+  /* CAMERA FIXÉE SUR LE PERSONNAGE — même après un zoom */
   const viewW=innerWidth/cameraZoom, viewH=innerHeight/cameraZoom;
   cam.x=clamp(p.x-viewW/2,0,Math.max(0,world.w-viewW));
   cam.y=clamp(p.y-viewH/2,0,Math.max(0,world.h-viewH));
