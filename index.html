@@ -253,7 +253,7 @@ html,body{width:100%;height:100%;overflow:hidden!important} body{margin:0}\n
     <div>XP <span id="xpText">0/100</span></div><div class="bar"><div id="xpFill" class="fill xp" style="width:0%"></div></div>
   </div>
   <div id="quest" class="panel"><h3>📜 Première mission</h3><div id="questText">Va parler au capitaine Rovan, puis élimine 3 bandits.</div><div style="margin-top:7px">Bandits : <b id="kills">0/3</b></div></div>
-  <div id="controls" class="panel">ZQSD / WASD ou flèches · E : interagir · ESPACE : attaquer · ZQSD pour le personnage · glisser la souris pour déplacer la caméra · molette pour zoomer/dézoomer · les PNJ restent à leur poste</div>
+  <div id="controls" class="panel">ZQSD / WASD ou flèches · E : interagir · ESPACE : attaquer · ZQSD pour le personnage · clic gauche maintenu pour déplacer la caméra · molette pour zoomer/dézoomer · R recentre la caméra · les PNJ restent à leur poste</div>
   <div id="log" class="panel">Bienvenue à Port Azure.</div>
   <div id="actions"><button id="attack">⚔️ Attaquer</button><button id="interact" class="secondary">💬 Interagir</button></div><button id="logoutGame" class="logout-game" type="button">🚪 Déconnexion</button>
   <div id="mobile"><div class="dpad"><span></span><button data-k="up">▲</button><span></span><button data-k="left">◀</button><button data-k="down">▼</button><button data-k="right">▶</button></div></div>
@@ -488,7 +488,7 @@ function bonus(){
 function log(t){logs.unshift(t);logs=logs.slice(0,3);const el=document.getElementById('log');if(el)el.innerHTML=logs.map(x=>'<div>'+x+'</div>').join('');}
 function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
 function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
-function worldToScreen(x,y){return{x:(x-cam.x)*cameraZoom,y:(y-cam.y)*cameraZoom}}
+function worldToScreen(x,y){return{x:x-cam.x,y:y-cam.y}}
 function barDraw(x,y,w,h,v){
   ctx.fillStyle='rgba(0,0,0,.65)';ctx.fillRect(x,y,w,h);
   ctx.fillStyle='#e94b5f';ctx.fillRect(x,y,w*clamp(v,0,1),h);
@@ -527,7 +527,7 @@ function draw(){
   const t=worldTime;
   // Animated ocean
   ctx.fillStyle='#3c9fca';ctx.fillRect(0,0,innerWidth,innerHeight);
-  ctx.save();ctx.translate(-cam.x*cameraZoom,-cam.y*cameraZoom);ctx.scale(cameraZoom,cameraZoom);
+  ctx.save();ctx.translate(-cam.x,-cam.y);
   ctx.globalAlpha=.25;ctx.strokeStyle='#d8f6ff';ctx.lineWidth=3;
   for(let y=40;y<world.h;y+=58){
     ctx.beginPath();
@@ -700,12 +700,15 @@ function tick(t){
   /* Caméra de jeu : le joueur se déplace réellement à l'écran.
      Elle ne colle plus le joueur au centre, ce qui donnait l'impression
      que les PNJ bougeaient quand ZQSD était pressé. */
-  const marginX=Math.min(260,innerWidth*0.22);
-  const marginY=Math.min(180,innerHeight*0.22);
-  if(p.x-cam.x<marginX) cam.x=Math.max(0,p.x-marginX);
-  if(p.x-cam.x>innerWidth-marginX) cam.x=Math.min(Math.max(0,world.w-innerWidth),p.x-(innerWidth-marginX));
-  if(p.y-cam.y<marginY) cam.y=Math.max(0,p.y-marginY);
-  if(p.y-cam.y>innerHeight-marginY) cam.y=Math.min(Math.max(0,world.h-innerHeight),p.y-(innerHeight-marginY));
+  if(!cameraDrag){
+    const viewW=innerWidth/cameraZoom, viewH=innerHeight/cameraZoom;
+    const marginX=Math.min(260/cameraZoom,viewW*0.22);
+    const marginY=Math.min(180/cameraZoom,viewH*0.22);
+    if(p.x-cam.x<marginX) cam.x=Math.max(0,p.x-marginX);
+    if(p.x-cam.x>viewW-marginX) cam.x=Math.min(Math.max(0,world.w-viewW),p.x-(viewW-marginX));
+    if(p.y-cam.y<marginY) cam.y=Math.max(0,p.y-marginY);
+    if(p.y-cam.y>viewH-marginY) cam.y=Math.min(Math.max(0,world.h-viewH),p.y-(viewH-marginY));
+  }
   cam.x=clamp(cam.x,0,Math.max(0,world.w-innerWidth/cameraZoom));
   cam.y=clamp(cam.y,0,Math.max(0,world.h-innerHeight/cameraZoom));
   p.attackFx=Math.max(0,p.attackFx-dt*5);
@@ -1274,6 +1277,15 @@ document.addEventListener('keydown',e=>{
     }
   }
 },true);
+
+addEventListener('keydown',e=>{
+  if(!game || e.target!==document.body)return;
+  if(e.key.toLowerCase()==='r'){
+    cam.x=clamp(p.x-innerWidth/(2*cameraZoom),0,Math.max(0,world.w-innerWidth/cameraZoom));
+    cam.y=clamp(p.y-innerHeight/(2*cameraZoom),0,Math.max(0,world.h-innerHeight/cameraZoom));
+    draw();
+  }
+});
 </script>
 </body>
 </html>
