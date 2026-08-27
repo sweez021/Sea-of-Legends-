@@ -167,16 +167,14 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:
 /* The artwork already contains the wooden menu panels.
    These are invisible click areas placed directly over them. */
 .click-menu{display:none!important}
-.click-zones{position:absolute;left:0.7%;bottom:2%;z-index:6;width:24.5%;height:48%;min-width:270px;max-width:440px}
-.panel-zone{position:absolute;left:0;width:100%;background:transparent;border:0;cursor:pointer;border-radius:10px;outline:none}
+.click-zones{position:absolute;inset:0;z-index:6;pointer-events:none}
+.panel-zone{position:absolute;display:block;pointer-events:auto;background:transparent!important;border:0!important;box-shadow:none!important;outline:none!important;padding:0!important;margin:0!important;cursor:pointer;border-radius:8px}
 .panel-zone:hover{background:rgba(255,209,102,.08);box-shadow:0 0 0 2px rgba(255,209,102,.35),0 0 18px rgba(255,209,102,.15)}
 .panel-zone:focus-visible{background:rgba(255,209,102,.12);box-shadow:0 0 0 3px #ffd166}
-.zone-login{top:0;height:30%;}
-.zone-register{top:34%;height:30%;}
-.zone-remember{top:68%;height:30%;}
-@media(max-width:800px){
-  .click-zones{left:4%;bottom:5%;width:52%;height:38%;min-width:0}
-}
+.zone-login{left:1.0%;top:48.0%;width:22.0%;height:10.2%}
+.zone-register{left:1.0%;top:60.3%;width:22.0%;height:10.5%}
+.zone-remember{left:1.0%;top:73.0%;width:22.0%;height:10.2%}
+
 /* FINAL PANEL CLICK AREAS */
 .panel-zone{
   appearance:none!important;
@@ -192,14 +190,12 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:
   background:transparent!important;
   box-shadow:none!important;
 }
+
+
 @media(max-width:800px){
-  .click-zones{
-    left:1%;
-    bottom:3%;
-    width:58%;
-    height:43%;
-    min-width:0;
-  }
+  .zone-login{left:1%;top:48%;width:40%;height:10%}
+  .zone-register{left:1%;top:60%;width:40%;height:10.5%}
+  .zone-remember{left:1%;top:73%;width:40%;height:10%}
 }
 </style>
 </head>
