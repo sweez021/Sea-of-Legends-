@@ -277,7 +277,7 @@ html,body{width:100%;height:100%;overflow:hidden!important} body{margin:0}\n
         <label>MOT DE PASSE</label>
         <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Entrez votre mot de passe">
         <label class="remember"><input id="rememberMe" type="checkbox" checked> Se souvenir de moi</label>
-        <button id="loginBtn" class="action gold">SE CONNECTER</button>
+        <button id="loginBtn" type="button" class="action gold">SE CONNECTER</button>
         <p id="loginMsg"></p>
       </div>
     </div>
@@ -1303,6 +1303,64 @@ addEventListener('keydown',e=>{
     draw();
   }
 });
+
+/* ===== AUTH UI — gestion robuste des boutons ===== */
+(function(){
+  function closeAll(){
+    document.querySelectorAll('.game-modal.open').forEach(m=>{
+      m.classList.remove('open');
+      m.setAttribute('aria-hidden','true');
+    });
+  }
+  function openModal(id){
+    const m=document.getElementById(id);
+    if(!m)return;
+    closeAll();
+    m.classList.add('open');
+    m.setAttribute('aria-hidden','false');
+    if(id==='rememberModal' && typeof renderRememberedAccounts==='function')renderRememberedAccounts();
+  }
+
+  document.addEventListener('click',function(e){
+    const openBtn=e.target.closest?.('[data-open]');
+    if(openBtn){
+      e.preventDefault(); e.stopPropagation();
+      openModal(openBtn.dataset.open);
+      return;
+    }
+    const closeBtn=e.target.closest?.('[data-close]');
+    if(closeBtn){
+      e.preventDefault(); e.stopPropagation();
+      const m=closeBtn.closest('.game-modal');
+      if(m){m.classList.remove('open');m.setAttribute('aria-hidden','true');}
+      return;
+    }
+  },true);
+
+  const login=document.getElementById('loginBtn');
+  if(login)login.addEventListener('click',function(e){
+    e.preventDefault();e.stopPropagation();
+    if(typeof solLogin==='function')solLogin();
+  });
+
+  const register=document.getElementById('registerBtn');
+  if(register)register.addEventListener('click',function(e){
+    e.preventDefault();e.stopPropagation();
+    if(typeof solRegister==='function')solRegister();
+  });
+
+  /* Clicking a remembered account always uses the direct-login function. */
+  document.addEventListener('click',function(e){
+    const card=e.target.closest?.('#rememberedAccounts .saved-account');
+    if(!card || e.target.closest('.saved-delete'))return;
+    e.preventDefault();e.stopPropagation();
+    const index=Number(card.dataset.accountIndex);
+    const account=(typeof getAccounts==='function'?getAccounts():[])[index];
+    if(account && typeof window.SOL_loginRememberedAccount==='function'){
+      window.SOL_loginRememberedAccount(account);
+    }
+  },true);
+})();
 </script>
 </body>
 </html>
