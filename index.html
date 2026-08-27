@@ -197,7 +197,29 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:
   .zone-register{left:1%;top:60%;width:40%;height:10.5%}
   .zone-remember{left:1%;top:73%;width:40%;height:10%}
 }
-html,body{width:100%;height:100%;overflow:hidden!important} body{margin:0}\n</style>
+html,body{width:100%;height:100%;overflow:hidden!important} body{margin:0}\n
+.character-screen{display:none;position:fixed;inset:0;z-index:10000;align-items:center;justify-content:center;padding:18px;background:linear-gradient(rgba(0,7,14,.72),rgba(0,7,14,.88)),url("sea_of_legends_menu.png") center/cover no-repeat;overflow:auto}
+.character-screen.open{display:flex}
+.character-panel{width:min(900px,94vw);max-height:92vh;overflow:auto;padding:25px;border:3px solid #a87927;border-radius:18px;background:linear-gradient(145deg,#071c2b,#06111a);box-shadow:0 20px 80px rgba(0,0,0,.8);color:#fff}
+.creator-title{text-align:center;color:#ffd166;font-size:clamp(25px,4vw,40px);font-weight:1000;letter-spacing:2px;text-shadow:0 3px 5px #000}
+.creator-subtitle{text-align:center;color:#b9cbd6;margin:5px 0 22px}
+.creator-layout{display:grid;grid-template-columns:300px 1fr;gap:28px;align-items:start}
+.preview-card{padding:18px;border:2px solid #6f5326;border-radius:14px;background:radial-gradient(circle at 50% 30%,#173a50,#07131d);text-align:center}
+.character-preview{position:relative;width:240px;height:300px;margin:auto;display:flex;align-items:center;justify-content:center;flex-direction:column;filter:drop-shadow(0 12px 12px rgba(0,0,0,.45))}
+.preview-hat{font-size:75px;height:85px;z-index:3}.preview-head{font-size:85px;height:90px;z-index:2}.preview-body{font-size:105px;height:105px;z-index:1}.preview-weapon{position:absolute;right:12px;bottom:55px;font-size:60px;transform:rotate(-25deg)}
+.preview-name{margin-top:8px;color:#ffd166;font-weight:1000;font-size:20px}
+.creator-form label{display:block;margin:10px 0 6px;color:#ffd166;font-size:12px;font-weight:1000;letter-spacing:1px}
+.creator-form input{width:100%;box-sizing:border-box;padding:13px;border-radius:9px;border:1px solid #557187;background:#06131e;color:#fff;font-size:16px}
+.choice-row{display:flex;flex-wrap:wrap;gap:8px}
+.choice{border:1px solid #526c7c;border-radius:8px;background:#102433;color:#eaf2f6;padding:10px 13px;cursor:pointer;font-weight:800}
+.choice:hover,.choice.active{border-color:#ffd166;background:#3a2b13;color:#ffd166}
+.create-character-btn{width:100%;margin-top:18px;padding:15px;border:2px solid #d7a93a;border-radius:9px;background:linear-gradient(#f6ca50,#b87916);color:#07131c;font-weight:1000;letter-spacing:1px;cursor:pointer}
+.character-msg{text-align:center;color:#ffd166;min-height:18px}
+@media(max-width:700px){.creator-layout{grid-template-columns:1fr}.preview-card{max-width:360px;margin:auto}.character-panel{padding:18px}}
+
+.logout-game{position:fixed;right:18px;bottom:18px;z-index:20;border:1px solid #9a752d;border-radius:8px;background:rgba(7,18,27,.9);color:#ffd166;padding:9px 13px;font-weight:900;cursor:pointer}
+.logout-game:hover{background:#1a3040}
+</style>
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -211,7 +233,7 @@ html,body{width:100%;height:100%;overflow:hidden!important} body{margin:0}\n</st
   <div id="quest" class="panel"><h3>📜 Première mission</h3><div id="questText">Va parler au capitaine Rovan, puis élimine 3 bandits.</div><div style="margin-top:7px">Bandits : <b id="kills">0/3</b></div></div>
   <div id="controls" class="panel">ZQSD / WASD ou flèches · E : parler / interagir · ESPACE : attaque</div>
   <div id="log" class="panel">Bienvenue à Port Azure.</div>
-  <div id="actions"><button id="attack">⚔️ Attaquer</button><button id="interact" class="secondary">💬 Interagir</button></div>
+  <div id="actions"><button id="attack">⚔️ Attaquer</button><button id="interact" class="secondary">💬 Interagir</button></div><button id="logoutGame" class="logout-game" type="button">🚪 Déconnexion</button>
   <div id="mobile"><div class="dpad"><span></span><button data-k="up">▲</button><span></span><button data-k="left">◀</button><button data-k="down">▼</button><button data-k="right">▶</button></div></div>
 </div>
 <div id="start">
@@ -260,6 +282,61 @@ html,body{width:100%;height:100%;overflow:hidden!important} body{margin:0}\n</st
         <p class="modal-help">Choisis un compte déjà utilisé sur cet appareil.</p>
         <div id="rememberedAccounts"></div>
         <div id="accountsEmpty" class="empty">Aucun compte mémorisé sur cet appareil.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="characterCreator" class="character-screen" aria-hidden="true">
+  <div class="character-panel">
+    <div class="creator-title">⚓ CRÉE TON PERSONNAGE ⚓</div>
+    <p class="creator-subtitle">Ton aventure commence maintenant, pirate.</p>
+
+    <div class="creator-layout">
+      <div class="preview-card">
+        <div id="characterPreview" class="character-preview">
+          <div class="preview-hat" id="previewHat">🎩</div>
+          <div class="preview-head" id="previewHead">🙂</div>
+          <div class="preview-body" id="previewBody">👕</div>
+          <div class="preview-weapon" id="previewWeapon">⚔️</div>
+        </div>
+        <div id="previewName" class="preview-name">Nouveau pirate</div>
+      </div>
+
+      <div class="creator-form">
+        <label>NOM DE PIRATE</label>
+        <input id="characterName" maxlength="18" placeholder="Ex : Sweez">
+
+        <label>SEXE</label>
+        <div class="choice-row" id="genderChoices">
+          <button type="button" class="choice active" data-value="homme">♂ Homme</button>
+          <button type="button" class="choice" data-value="femme">♀ Femme</button>
+        </div>
+
+        <label>COIFFURE</label>
+        <div class="choice-row" id="hairChoices">
+          <button type="button" class="choice active" data-value="hat1">🎩</button>
+          <button type="button" class="choice" data-value="hat2">🧢</button>
+          <button type="button" class="choice" data-value="hat3">👒</button>
+          <button type="button" class="choice" data-value="none">—</button>
+        </div>
+
+        <label>STYLE DE TENUE</label>
+        <div class="choice-row" id="bodyChoices">
+          <button type="button" class="choice active" data-value="shirt1">👕</button>
+          <button type="button" class="choice" data-value="shirt2">🥋</button>
+          <button type="button" class="choice" data-value="shirt3">🧥</button>
+        </div>
+
+        <label>ARME DE DÉPART</label>
+        <div class="choice-row" id="weaponChoices">
+          <button type="button" class="choice active" data-value="sword">⚔️ Sabre</button>
+          <button type="button" class="choice" data-value="staff">🪄 Bâton</button>
+          <button type="button" class="choice" data-value="none">— Aucune</button>
+        </div>
+
+        <button type="button" id="createCharacterBtn" class="create-character-btn">🏴‍☠️ CRÉER MON PERSONNAGE</button>
+        <p id="characterMsg" class="character-msg"></p>
       </div>
     </div>
   </div>
@@ -366,10 +443,81 @@ function showAuthMsg(id,msg,ok=false){const el=document.getElementById(id);el.te
 function getAccounts(){try{return JSON.parse(localStorage.getItem(ACCOUNTS_KEY)||'[]')}catch(e){return []}}
 function saveAccounts(a){localStorage.setItem(ACCOUNTS_KEY,JSON.stringify(a.slice(0,5)))}
 function rememberAccount(u){let a=getAccounts().filter(x=>x.email!==u.email);a.unshift({name:u.name,email:u.email});saveAccounts(a);renderRememberedAccounts()}
-function renderRememberedAccounts(){const box=document.getElementById('rememberedAccounts'),empty=document.getElementById('accountsEmpty');box.innerHTML='';const a=getAccounts();empty.style.display=a.length?'none':'block';a.forEach((x,i)=>{const r=document.createElement('div');r.className='account-card';r.innerHTML=`<div class="account-avatar">${(x.name||'P').charAt(0).toUpperCase()}</div><div class="account-info"><div class="account-name"></div><div class="account-email"></div></div><button class="account-remove">✕</button>`;r.querySelector('.account-name').textContent=x.name;r.querySelector('.account-email').textContent=x.email;r.onclick=e=>{if(e.target.classList.contains('account-remove'))return;document.getElementById('loginEmail').value=x.email;document.getElementById('loginPassword').focus();showAuthMsg('loginMsg','Compte sélectionné. Entre ton mot de passe.')};r.querySelector('.account-remove').onclick=e=>{e.stopPropagation();saveAccounts(getAccounts().filter((_,j)=>j!==i));renderRememberedAccounts()};box.appendChild(r)})}
-function startGame(name){p.name=name||'Pirate';game=true;document.getElementById('start').style.display='none';log('⚓ Trouve le capitaine Rovan à Port Azure.');updateHUD();requestAnimationFrame(tick)}
+function renderRememberedAccounts(){
+  const box=document.getElementById('rememberedAccounts');
+  const empty=document.getElementById('accountsEmpty');
+  if(!box) return;
+  let accounts=[];
+  try{accounts=JSON.parse(localStorage.getItem('sol_accounts')||'[]')}catch(e){accounts=[]}
+  box.innerHTML='';
+  if(!accounts.length){
+    if(empty) empty.style.display='block';
+    return;
+  }
+  if(empty) empty.style.display='none';
+  accounts.slice(0,5).forEach((account,i)=>{
+    const card=document.createElement('div');
+    card.className='saved-account';
+    card.innerHTML=`<div class="saved-avatar">${(account.name||account.email||'P').charAt(0).toUpperCase()}</div>
+      <div class="saved-info"><div class="saved-name">${account.name||'Pirate'}</div>
+      <div class="saved-email">${account.email||''}</div></div>
+      <button type="button" class="saved-delete" aria-label="Supprimer ce compte">✕</button>`;
+    card.addEventListener('click',()=>SOL_loginRememberedAccount(account));
+    card.querySelector('.saved-delete').addEventListener('click',(e)=>{
+      e.stopPropagation();
+      accounts.splice(i,1);
+      localStorage.setItem('sol_accounts',JSON.stringify(accounts));
+      renderRememberedAccounts();
+    });
+    box.appendChild(card);
+  });
+}
 
-
+const SOLCharacter={
+  current:{gender:'homme',hair:'hat1',body:'shirt1',weapon:'sword'},
+  open(){
+    document.getElementById('characterCreator').classList.add('open');
+    document.getElementById('characterCreator').setAttribute('aria-hidden','false');
+    const name=localStorage.getItem('sol_pending_name')||localStorage.getItem('sol_pirate_name')||'';
+    document.getElementById('characterName').value=name;
+    this.update();
+  },
+  update(){
+    const n=document.getElementById('characterName').value.trim()||'Nouveau pirate';
+    document.getElementById('previewName').textContent=n;
+    const hats={hat1:'🎩',hat2:'🧢',hat3:'👒',none:''};
+    const bodies={shirt1:'👕',shirt2:'🥋',shirt3:'🧥'};
+    const weapons={sword:'⚔️',staff:'🪄',none:''};
+    document.getElementById('previewHat').textContent=hats[this.current.hair];
+    document.getElementById('previewBody').textContent=bodies[this.current.body];
+    document.getElementById('previewWeapon').textContent=weapons[this.current.weapon];
+    document.getElementById('previewHead').textContent=this.current.gender==='femme'?'👩':'🙂';
+  },
+  select(group,key){
+    document.querySelectorAll('#'+group+' .choice').forEach(b=>b.classList.toggle('active',b.dataset.value===key));
+    this.current[{genderChoices:'gender',hairChoices:'hair',bodyChoices:'body',weaponChoices:'weapon'}[group]]=key;
+    this.update();
+  }
+};
+['genderChoices','hairChoices','bodyChoices','weaponChoices'].forEach(group=>{
+  document.querySelectorAll('#'+group+' .choice').forEach(b=>b.addEventListener('click',()=>SOLCharacter.select(group,b.dataset.value)));
+});
+document.getElementById('characterName').addEventListener('input',()=>SOLCharacter.update());
+document.getElementById('createCharacterBtn').addEventListener('click',()=>{
+  const name=document.getElementById('characterName').value.trim();
+  const msg=document.getElementById('characterMsg');
+  if(name.length<3){msg.textContent='Choisis un nom de pirate d’au moins 3 caractères.';return;}
+  const account=JSON.parse(localStorage.getItem('sol_current_account')||'null');
+  const character={name,gender:SOLCharacter.current.gender,hair:SOLCharacter.current.hair,body:SOLCharacter.current.body,weapon:SOLCharacter.current.weapon,createdAt:Date.now()};
+  localStorage.setItem('sol_character',JSON.stringify(character));
+  localStorage.setItem('sol_pirate_name',name);
+  localStorage.removeItem('sol_pending_name');
+  if(account){account.character=character;localStorage.setItem('sol_current_account',JSON.stringify(account));}
+  msg.textContent='Personnage créé ! Bienvenue dans Sea of Legends.';
+  setTimeout(()=>{
+    if(window.SOL_finishCharacterAndStart) SOL_finishCharacterAndStart(character);
+  },350);
+});
 document.querySelectorAll('[data-open]').forEach(btn=>{
   btn.addEventListener('click',()=>{
     document.querySelectorAll('.auth-modal.open').forEach(m=>{m.classList.remove('open');m.setAttribute('aria-hidden','true')});
@@ -405,6 +553,203 @@ document.getElementById('loginBtn').onclick=async()=>{const email=document.getEl
 renderRememberedAccounts();
 document.getElementById('attack').onclick=attack;document.getElementById('interact').onclick=interact;
 document.querySelectorAll('#mobile button').forEach(b=>b.addEventListener('pointerdown',()=>{let k=b.dataset.k;let map={up:'w',down:'s',left:'a',right:'d'};keys[map[k]]=true;setTimeout(()=>keys[map[k]]=false,180)}));
+
+function SOL_afterLogin(){
+  const existing=localStorage.getItem('sol_character');
+  if(existing){
+    document.getElementById('start').style.display='none';
+  }else{
+    SOLCharacter.open();
+  }
+}
+
+document.getElementById('loginBtn')?.addEventListener('click',()=>{
+  setTimeout(()=>{
+    const email=(document.getElementById('loginEmail')?.value||'').trim();
+    if(email){
+      localStorage.setItem('sol_current_account',JSON.stringify({email}));
+      SOL_afterLogin();
+    }
+  },30);
+});
+document.getElementById('registerBtn')?.addEventListener('click',()=>{
+  setTimeout(()=>{
+    const email=(document.getElementById('regEmail')?.value||'').trim();
+    const name=(document.getElementById('regName')?.value||'').trim();
+    if(email && name){
+      localStorage.setItem('sol_current_account',JSON.stringify({email,name}));
+      localStorage.setItem('sol_pending_name',name);
+      SOL_afterLogin();
+    }
+  },30);
+});
+
+function SOL_saveRememberedAccount(){
+  const email=(document.getElementById('regEmail')?.value||'').trim();
+  const name=(document.getElementById('regName')?.value||'').trim();
+  if(!email) return;
+  let accounts=[]; try{accounts=JSON.parse(localStorage.getItem('sol_accounts')||'[]')}catch(e){}
+  const old=accounts.find(a=>a.email===email);
+  const account=old||{email,name};
+  account.name=name||account.name||'Pirate';
+  accounts=[account,...accounts.filter(a=>a.email!==email)].slice(0,5);
+  localStorage.setItem('sol_accounts',JSON.stringify(accounts));
+}
+
+
+// Keep the created character attached to the remembered account.
+const _oldCreateCharacter = document.getElementById('createCharacterBtn')?.onclick;
+document.getElementById('createCharacterBtn')?.addEventListener('click',()=>{
+  setTimeout(()=>{
+    const current=JSON.parse(localStorage.getItem('sol_current_account')||'null');
+    const character=JSON.parse(localStorage.getItem('sol_character')||'null');
+    if(!current || !character) return;
+    let accounts=[]; try{accounts=JSON.parse(localStorage.getItem('sol_accounts')||'[]')}catch(e){}
+    const email=current.email;
+    if(email){
+      let a=accounts.find(x=>x.email===email);
+      if(!a){a={email,name:current.name||character.name};accounts.unshift(a)}
+      a.name=character.name;
+      a.character=character;
+      accounts=[a,...accounts.filter(x=>x!==a)].slice(0,5);
+      localStorage.setItem('sol_accounts',JSON.stringify(accounts));
+    }
+  },750);
+});
+
+
+/* =========================================================
+   SEA OF LEGENDS — SESSION + POSITION PERSISTENCE V0.2
+   Chaque compte possède sa propre position de déconnexion.
+   ========================================================= */
+const SOL_SESSION_KEY='sol_current_account';
+const SOL_POS_PREFIX='sol_position_';
+
+function solAccountId(account){
+  return account && account.email ? account.email.toLowerCase().trim() : 'guest';
+}
+function solLoadPosition(account){
+  try{
+    const saved=JSON.parse(localStorage.getItem(SOL_POS_PREFIX+solAccountId(account))||'null');
+    if(saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)){
+      p.x=clamp(saved.x,120,2280);
+      p.y=clamp(saved.y,120,1380);
+      if(Number.isFinite(saved.hp))p.hp=clamp(saved.hp,1,p.maxhp);
+      if(Number.isFinite(saved.lvl))p.lvl=Math.max(1,saved.lvl);
+      if(Number.isFinite(saved.xp))p.xp=Math.max(0,saved.xp);
+      if(Number.isFinite(saved.bounty))p.bounty=Math.max(0,saved.bounty);
+      if(Number.isFinite(saved.kills))p.kills=Math.max(0,saved.kills);
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+function solSavePosition(account){
+  if(!account || !game)return;
+  const data={
+    x:p.x,y:p.y,hp:p.hp,lvl:p.lvl,xp:p.xp,bounty:p.bounty,kills:p.kills,
+    questStarted:!!questStarted,questDone:!!questDone,
+    savedAt:Date.now()
+  };
+  localStorage.setItem(SOL_POS_PREFIX+solAccountId(account),JSON.stringify(data));
+}
+function solSetCurrent(account){
+  localStorage.setItem(SOL_SESSION_KEY,JSON.stringify(account));
+}
+function solStartGame(account){
+  if(!account)return;
+  solSetCurrent(account);
+  p.name=account.name || (account.character && account.character.name) || 'Pirate';
+  if(account.character){
+    localStorage.setItem('sol_character',JSON.stringify(account.character));
+    localStorage.setItem('sol_pirate_name',account.character.name||p.name);
+  }
+  solLoadPosition(account);
+  questStarted=!!(JSON.parse(localStorage.getItem(SOL_POS_PREFIX+solAccountId(account))||'{}').questStarted);
+  questDone=!!(JSON.parse(localStorage.getItem(SOL_POS_PREFIX+solAccountId(account))||'{}').questDone);
+  game=true;
+  const start=document.getElementById('start');
+  if(start)start.style.display='none';
+  const creator=document.getElementById('characterCreator');
+  if(creator){creator.classList.remove('open');creator.setAttribute('aria-hidden','true')}
+  cam.x=clamp(p.x-innerWidth/2,0,world.w-innerWidth);
+  cam.y=clamp(p.y-innerHeight/2,0,world.h-innerHeight);
+  updateHUD();draw();
+  cancelAnimationFrame(window.SOLtickFrame||0);
+  last=performance.now();
+  window.SOLtickFrame=requestAnimationFrame(tick);
+}
+function solDisconnect(){
+  const account=JSON.parse(localStorage.getItem(SOL_SESSION_KEY)||'null');
+  solSavePosition(account);
+  game=false;
+  localStorage.removeItem(SOL_SESSION_KEY);
+  const start=document.getElementById('start');
+  if(start)start.style.display='flex';
+  document.querySelectorAll('.auth-modal.open').forEach(m=>m.classList.remove('open'));
+  renderRememberedAccounts();
+  log('Position sauvegardée. À bientôt, pirate !');
+}
+window.addEventListener('beforeunload',()=>{
+  const account=JSON.parse(localStorage.getItem(SOL_SESSION_KEY)||'null');
+  solSavePosition(account);
+});
+setInterval(()=>{
+  const account=JSON.parse(localStorage.getItem(SOL_SESSION_KEY)||'null');
+  solSavePosition(account);
+},1000);
+
+/* Un clic sur un compte mémorisé = connexion directe + restauration de position. */
+window.SOL_loginRememberedAccount=function(account){
+  if(!account)return;
+  solSetCurrent(account);
+  if(account.character){
+    solStartGame(account);
+    return;
+  }
+  /* Ancien compte sans personnage : on demande d'abord d'en créer un. */
+  localStorage.setItem('sol_pending_name',account.name||'');
+  const modal=document.getElementById('rememberModal');
+  if(modal)modal.classList.remove('open');
+  if(window.SOLCharacter)SOLCharacter.open();
+};
+
+/* Après création du personnage, on lance le jeu et mémorise le profil. */
+window.SOL_finishCharacterAndStart=function(character){
+  const account=JSON.parse(localStorage.getItem(SOL_SESSION_KEY)||'null')||{};
+  account.name=character.name;
+  account.character=character;
+  solSetCurrent(account);
+  let accounts=[];
+  try{accounts=JSON.parse(localStorage.getItem(ACCOUNTS_KEY)||'[]')}catch(e){}
+  accounts=[account,...accounts.filter(a=>a.email!==account.email)].slice(0,5);
+  saveAccounts(accounts);
+  localStorage.setItem('sol_accounts',JSON.stringify(accounts));
+  solStartGame(account);
+};
+
+/* Le bouton de déconnexion sauvegarde la position exacte. */
+document.getElementById('logoutGame')?.addEventListener('click',solDisconnect);
+
+
+document.getElementById('loginBtn')?.addEventListener('click',()=>{
+  setTimeout(()=>{
+    const email=(document.getElementById('loginEmail')?.value||'').trim().toLowerCase();
+    const raw=localStorage.getItem(USER_KEY);
+    if(!raw || !email)return;
+    try{
+      const u=JSON.parse(raw);
+      if(u.email===email){
+        const accounts=getAccounts();
+        const acc=accounts.find(a=>a.email===email)||u;
+        solSetCurrent(acc);
+        if(acc.character)solStartGame(acc);
+        else SOLCharacter.open();
+      }
+    }catch(e){}
+  },320);
+});
+
 </script>
 </body>
 </html>
