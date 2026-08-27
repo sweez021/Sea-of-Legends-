@@ -133,6 +133,36 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:
 .accounts-limit{text-align:center;color:#9fb2c0;font-size:11px}
 .scene-footer{margin-top:20px;padding:8px 15px;border:1px solid #9a752d;border-radius:12px;background:rgba(5,14,21,.82);color:#ffd166;text-align:center;font-size:11px;font-weight:900;letter-spacing:.6px}
 @media(max-width:650px){.menu-logo>div{font-size:42px}.wood-btn{min-height:56px;font-size:15px}.login-scene{justify-content:center}.modal-card{padding:20px}}
+
+#start{position:fixed;inset:0;z-index:9999;background:#061522}
+.splash{position:relative;width:100%;height:100%;min-height:100vh;background:url("sea_of_legends_menu.png") center/cover no-repeat;overflow:auto}
+.splash-dark{position:absolute;inset:0;background:rgba(0,0,0,.08);pointer-events:none}
+.click-menu{position:absolute;left:2%;bottom:18%;z-index:5;display:flex;flex-direction:column;gap:12px;width:min(330px,25vw)}
+.wood-button{cursor:pointer;padding:14px 18px;min-height:58px;border:3px solid #513115;border-radius:8px;background:linear-gradient(#d09a50,#8b5724 55%,#633917);color:#fff0c7;font-size:clamp(14px,1.5vw,20px);font-weight:1000;letter-spacing:1px;text-shadow:0 2px 3px #000;box-shadow:0 6px 0 #3b220f,0 12px 25px rgba(0,0,0,.35);transition:.15s}
+.wood-button:hover{filter:brightness(1.15);transform:translateY(-2px)}
+.wood-button:active{transform:translateY(4px);box-shadow:0 2px 0 #3b220f}
+.game-modal{display:none;position:fixed;inset:0;z-index:20;align-items:center;justify-content:center;background:rgba(0,5,10,.62);backdrop-filter:blur(3px);padding:20px}
+.game-modal.open{display:flex}
+.modal-box{position:relative;width:min(460px,92vw);padding:25px;border:3px solid #a87b2a;border-radius:15px;background:linear-gradient(145deg,#071c2b,#06111a);box-shadow:0 20px 70px rgba(0,0,0,.75);color:#fff}
+.modal-box h2{margin:0 0 18px;padding:11px;text-align:center;border:2px solid #c49637;border-radius:9px;background:#172c3a;color:#ffd166;font-size:22px}
+.close-modal{position:absolute;right:9px;top:9px;width:35px;height:35px;border-radius:50%;border:1px solid #8c6829;background:#172b39;color:#ffd166;cursor:pointer;font-weight:900}
+.modal-box label{display:block;margin:10px 0 5px;color:#ffd166;font-weight:900;font-size:12px}
+.modal-box input{width:100%;box-sizing:border-box;padding:12px;border-radius:8px;border:1px solid #527087;background:#06131e;color:#fff;font-size:15px}
+.remember{display:flex!important;align-items:center;gap:7px;color:#fff!important;font-size:12px!important}
+.remember input{width:auto}
+.action{width:100%;margin-top:12px;padding:13px;border-radius:8px;border:2px solid #d7a93a;font-weight:1000;cursor:pointer}
+.gold{background:linear-gradient(#f6ca50,#b87916);color:#07131c}
+.blue{background:linear-gradient(#36a8ec,#14618c);color:#fff}
+.modal-box p{text-align:center;min-height:18px;font-size:12px;color:#ffd166}
+.modal-help{text-align:center;color:#d5e2ea!important}
+#rememberedAccounts{display:grid;gap:8px}
+.saved-account{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #795f2d;border-radius:9px;background:#102536;cursor:pointer}
+.saved-account:hover{border-color:#ffd166}
+.saved-avatar{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:#d7a93a;color:#07131c;font-weight:1000}
+.saved-info{flex:1;text-align:left}.saved-name{font-weight:900}.saved-email{font-size:11px;color:#aebdca}
+.saved-delete{border:0;background:transparent;color:#ffd166;font-size:17px;cursor:pointer}
+.empty{padding:22px;text-align:center;color:#aab8c2;border:1px dashed #476173;border-radius:9px}
+@media(max-width:800px){.click-menu{left:50%;bottom:8%;transform:translateX(-50%);width:min(340px,80vw)}.splash{background-position:center}.wood-button{min-height:52px}}
 </style>
 </head>
 <body>
@@ -151,52 +181,53 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:
   <div id="mobile"><div class="dpad"><span></span><button data-k="up">▲</button><span></span><button data-k="left">◀</button><button data-k="down">▼</button><button data-k="right">▶</button></div></div>
 </div>
 <div id="start">
-  <div class="login-scene">
-    <div class="scene-overlay"></div>
-    <div class="menu-logo"><div>SEA OF LEGENDS</div><small>VIVEZ VOTRE AVENTURE • DEVENEZ UNE LÉGENDE</small></div>
+  <div class="splash">
+    <div class="splash-dark"></div>
 
-    <div class="wood-menu" aria-label="Menu principal">
-      <button type="button" class="wood-btn" data-open="loginModal">⚓ <span>CONNEXION</span></button>
-      <button type="button" class="wood-btn" data-open="registerModal">☠ <span>INSCRIPTION</span></button>
-      <button type="button" class="wood-btn" data-open="rememberModal">👥 <span>SE SOUVENIR DE MOI</span></button>
+    <div class="click-menu">
+      <button class="wood-button" data-open="loginModal">⚓ <span>CONNEXION</span></button>
+      <button class="wood-button" data-open="registerModal">☠ <span>INSCRIPTION</span></button>
+      <button class="wood-button" data-open="rememberModal">👥 <span>SE SOUVENIR DE MOI</span></button>
     </div>
 
-    <div class="auth-modal" id="loginModal" aria-hidden="true">
-      <div class="modal-card">
-        <button type="button" class="modal-close" data-close>✕</button>
-        <div class="modal-title">⚓ CONNEXION</div>
-        <label>E-MAIL</label><input id="loginEmail" type="email" autocomplete="email" placeholder="Entrez votre e-mail">
-        <label>MOT DE PASSE</label><input id="loginPassword" type="password" autocomplete="current-password" placeholder="Entrez votre mot de passe">
-        <label class="remember-check"><input id="rememberMe" type="checkbox" checked><span>Se souvenir de moi</span></label>
-        <button id="loginBtn" class="main-action gold-action">SE CONNECTER</button>
-        <p id="loginMsg" class="auth-msg"></p>
+    <div class="game-modal" id="loginModal">
+      <div class="modal-box">
+        <button class="close-modal" data-close>✕</button>
+        <h2>⚓ CONNEXION</h2>
+        <label>E-MAIL</label>
+        <input id="loginEmail" type="email" autocomplete="email" placeholder="Entrez votre e-mail">
+        <label>MOT DE PASSE</label>
+        <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Entrez votre mot de passe">
+        <label class="remember"><input id="rememberMe" type="checkbox" checked> Se souvenir de moi</label>
+        <button id="loginBtn" class="action gold">SE CONNECTER</button>
+        <p id="loginMsg"></p>
       </div>
     </div>
 
-    <div class="auth-modal" id="registerModal" aria-hidden="true">
-      <div class="modal-card">
-        <button type="button" class="modal-close" data-close>✕</button>
-        <div class="modal-title">🏴‍☠️ INSCRIPTION</div>
-        <label>NOM DE PIRATE</label><input id="regName" maxlength="18" placeholder="Choisis ton nom de pirate">
-        <label>E-MAIL</label><input id="regEmail" type="email" autocomplete="email" placeholder="Entrez votre e-mail">
-        <label>MOT DE PASSE</label><input id="regPassword" type="password" autocomplete="new-password" placeholder="Créez un mot de passe">
-        <button id="registerBtn" class="main-action blue-action">CRÉER MON COMPTE</button>
-        <p id="registerMsg" class="auth-msg"></p>
+    <div class="game-modal" id="registerModal">
+      <div class="modal-box">
+        <button class="close-modal" data-close>✕</button>
+        <h2>☠ INSCRIPTION</h2>
+        <label>NOM DE PIRATE</label>
+        <input id="regName" maxlength="18" placeholder="Choisis ton nom de pirate">
+        <label>E-MAIL</label>
+        <input id="regEmail" type="email" autocomplete="email" placeholder="Entrez votre e-mail">
+        <label>MOT DE PASSE</label>
+        <input id="regPassword" type="password" autocomplete="new-password" placeholder="Créez un mot de passe">
+        <button id="registerBtn" class="action blue">CRÉER MON COMPTE</button>
+        <p id="registerMsg"></p>
       </div>
     </div>
 
-    <div class="auth-modal" id="rememberModal" aria-hidden="true">
-      <div class="modal-card remember-card">
-        <button type="button" class="modal-close" data-close>✕</button>
-        <div class="modal-title">👥 SE SOUVENIR DE MOI</div>
-        <p class="modal-subtitle">Choisis un compte déjà utilisé sur cet appareil.</p>
-        <div id="rememberedAccounts" class="remembered-accounts"></div>
-        <div id="accountsEmpty" class="accounts-empty">Aucun compte mémorisé sur cet appareil.</div>
-        <p class="accounts-limit">Jusqu'à 5 comptes mémorisés sur cet appareil</p>
+    <div class="game-modal" id="rememberModal">
+      <div class="modal-box">
+        <button class="close-modal" data-close>✕</button>
+        <h2>👥 SE SOUVENIR DE MOI</h2>
+        <p class="modal-help">Choisis un compte déjà utilisé sur cet appareil.</p>
+        <div id="rememberedAccounts"></div>
+        <div id="accountsEmpty" class="empty">Aucun compte mémorisé sur cet appareil.</div>
       </div>
     </div>
-
-    <div class="scene-footer">🌊 LE GRAND LINE VOUS ATTEND • QUELLE LÉGENDE ALLEZ-VOUS DEVENIR ? 🌊</div>
   </div>
 </div>
 <script>
@@ -327,6 +358,14 @@ document.querySelectorAll('.auth-modal').forEach(modal=>{
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape') document.querySelectorAll('.auth-modal.open').forEach(m=>{m.classList.remove('open');m.setAttribute('aria-hidden','true')});
 });
+
+document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>{
+  const m=document.getElementById(b.dataset.open); if(m)m.classList.add('open');
+  if(b.dataset.open==='rememberModal' && typeof renderRememberedAccounts==='function')renderRememberedAccounts();
+}));
+document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>b.closest('.game-modal').classList.remove('open')));
+document.querySelectorAll('.game-modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open')}));
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.game-modal.open').forEach(m=>m.classList.remove('open'))});
 document.getElementById('registerBtn').onclick=async()=>{const name=document.getElementById('regName').value.trim(),email=document.getElementById('regEmail').value.trim().toLowerCase(),pass=document.getElementById('regPassword').value;if(name.length<2)return showAuthMsg('registerMsg','Nom de pirate trop court.');if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))return showAuthMsg('registerMsg','Adresse e-mail invalide.');if(pass.length<6)return showAuthMsg('registerMsg','Mot de passe : 6 caractères minimum.');if(getAccounts().some(a=>a.email===email))return showAuthMsg('registerMsg','Ce compte est déjà mémorisé sur cet appareil.');const u={name,email,passwordHash:await hashPassword(pass)};localStorage.setItem(USER_KEY,JSON.stringify(u));rememberAccount(u);document.getElementById('loginEmail').value=email;showAuthMsg('registerMsg','Compte créé ! Connecte-toi pour commencer.',true)}
 document.getElementById('loginBtn').onclick=async()=>{const email=document.getElementById('loginEmail').value.trim().toLowerCase(),pass=document.getElementById('loginPassword').value,raw=localStorage.getItem(USER_KEY);if(!raw)return showAuthMsg('loginMsg','Aucun compte local. Crée d’abord ton compte.');const u=JSON.parse(raw),h=await hashPassword(pass);if(u.email!==email||u.passwordHash!==h)return showAuthMsg('loginMsg','E-mail ou mot de passe incorrect.');if(document.getElementById('rememberMe').checked)rememberAccount(u);showAuthMsg('loginMsg','Connexion réussie !',true);setTimeout(()=>startGame(u.name),250)}
 renderRememberedAccounts();
