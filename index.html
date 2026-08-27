@@ -253,7 +253,7 @@ html,body{width:100%;height:100%;overflow:hidden!important} body{margin:0}\n
     <div>XP <span id="xpText">0/100</span></div><div class="bar"><div id="xpFill" class="fill xp" style="width:0%"></div></div>
   </div>
   <div id="quest" class="panel"><h3>📜 Première mission</h3><div id="questText">Va parler au capitaine Rovan, puis élimine 3 bandits.</div><div style="margin-top:7px">Bandits : <b id="kills">0/3</b></div></div>
-  <div id="controls" class="panel">ZQSD / WASD ou flèches · E : interagir · ESPACE : attaquer · Les PNJ restent à leur poste</div>
+  <div id="controls" class="panel">ZQSD / WASD ou flèches · E : interagir · ESPACE : attaquer · ZQSD pour le personnage · glisser la souris pour déplacer la caméra · molette pour zoomer/dézoomer · les PNJ restent à leur poste</div>
   <div id="log" class="panel">Bienvenue à Port Azure.</div>
   <div id="actions"><button id="attack">⚔️ Attaquer</button><button id="interact" class="secondary">💬 Interagir</button></div><button id="logoutGame" class="logout-game" type="button">🚪 Déconnexion</button>
   <div id="mobile"><div class="dpad"><span></span><button data-k="up">▲</button><span></span><button data-k="left">◀</button><button data-k="down">▼</button><button data-k="right">▶</button></div></div>
@@ -393,6 +393,39 @@ function resize(){
   scale=devicePixelRatio; ctx.setTransform(scale,0,0,scale,0,0);
 }
 addEventListener('resize',resize); resize();
+addEventListener('wheel',e=>{
+  if(!game)return;
+  e.preventDefault();
+  const old=cameraZoom;
+  cameraZoom=clamp(cameraZoom+(e.deltaY<0?0.1:-0.1),0.55,1.8);
+  const rect=c.getBoundingClientRect();
+  const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+  /* Keep the point under the mouse under the mouse while zooming. */
+  const wx=cam.x+mx/old, wy=cam.y+my/old;
+  cam.x=wx-mx/cameraZoom; cam.y=wy-my/cameraZoom;
+  cam.x=clamp(cam.x,0,Math.max(0,world.w-innerWidth/cameraZoom));
+  cam.y=clamp(cam.y,0,Math.max(0,world.h-innerHeight/cameraZoom));
+  resize();
+  draw();
+},{passive:false});
+
+c.addEventListener('pointerdown',e=>{
+  if(!game || e.button!==0)return;
+  cameraDrag=true; c.setPointerCapture(e.pointerId);
+  dragX=e.clientX;dragY=e.clientY;dragCamX=cam.x;dragCamY=cam.y;
+});
+c.addEventListener('pointermove',e=>{
+  if(!cameraDrag)return;
+  cam.x=clamp(dragCamX-(e.clientX-dragX)/cameraZoom,0,Math.max(0,world.w-innerWidth/cameraZoom));
+  cam.y=clamp(dragCamY-(e.clientY-dragY)/cameraZoom,0,Math.max(0,world.h-innerHeight/cameraZoom));
+  draw();
+});
+c.addEventListener('pointerup',e=>{
+  cameraDrag=false;
+  try{c.releasePointerCapture(e.pointerId)}catch(_){}
+});
+c.addEventListener('pointercancel',()=>cameraDrag=false);
+
 
 const keys={};
 /* ZQSD contrôle uniquement le joueur. Les PNJ restent sur leur emplacement. */
@@ -416,6 +449,8 @@ addEventListener('keyup',e=>solMovementKey(e,false));
 window.addEventListener('blur',()=>{Object.keys(keys).forEach(k=>keys[k]=false);});
 
 let game=false,last=0,cam={x:0,y:0},worldTime=0;
+let cameraZoom=1;
+let cameraDrag=false,dragX=0,dragY=0,dragCamX=0,dragCamY=0;
 const world={w:3000,h:1900};
 const p={x:760,y:980,r:23,speed:245,hp:100,maxhp:100,lvl:1,xp:0,bounty:0,kills:0,name:'Pirate',aspiration:'Combattant',facing:1,attackFx:0,coins:250};
 const npc={x:930,y:850,r:27,name:'Capitaine Rovan',homeX:930,homeY:850};
@@ -453,7 +488,7 @@ function bonus(){
 function log(t){logs.unshift(t);logs=logs.slice(0,3);const el=document.getElementById('log');if(el)el.innerHTML=logs.map(x=>'<div>'+x+'</div>').join('');}
 function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
 function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
-function worldToScreen(x,y){return{x:x-cam.x,y:y-cam.y}}
+function worldToScreen(x,y){return{x:(x-cam.x)*cameraZoom,y:(y-cam.y)*cameraZoom}}
 function barDraw(x,y,w,h,v){
   ctx.fillStyle='rgba(0,0,0,.65)';ctx.fillRect(x,y,w,h);
   ctx.fillStyle='#e94b5f';ctx.fillRect(x,y,w*clamp(v,0,1),h);
@@ -492,7 +527,7 @@ function draw(){
   const t=worldTime;
   // Animated ocean
   ctx.fillStyle='#3c9fca';ctx.fillRect(0,0,innerWidth,innerHeight);
-  ctx.save();ctx.translate(-cam.x,-cam.y);
+  ctx.save();ctx.translate(-cam.x*cameraZoom,-cam.y*cameraZoom);ctx.scale(cameraZoom,cameraZoom);
   ctx.globalAlpha=.25;ctx.strokeStyle='#d8f6ff';ctx.lineWidth=3;
   for(let y=40;y<world.h;y+=58){
     ctx.beginPath();
@@ -653,7 +688,7 @@ function tick(t){
   const dt=Math.min(.033,(t-last)/1000||0);last=t;worldTime+=dt;
   let dx=(keys.d||keys.arrowright?1:0)-(keys.q||keys.a||keys.arrowleft?1:0);
   let dy=(keys.s||keys.arrowdown?1:0)-(keys.z||keys.w||keys.arrowup?1:0);
-  if(dx||dy){
+  if(dx||dy && !cameraDrag){
     const l=Math.hypot(dx,dy);p.x+=dx/l*(p.speed+bonus().speed)*dt;p.y+=dy/l*(p.speed+bonus().speed)*dt;
     p.facing=dx<0?-1:1;
   }
@@ -671,8 +706,8 @@ function tick(t){
   if(p.x-cam.x>innerWidth-marginX) cam.x=Math.min(Math.max(0,world.w-innerWidth),p.x-(innerWidth-marginX));
   if(p.y-cam.y<marginY) cam.y=Math.max(0,p.y-marginY);
   if(p.y-cam.y>innerHeight-marginY) cam.y=Math.min(Math.max(0,world.h-innerHeight),p.y-(innerHeight-marginY));
-  cam.x=clamp(cam.x,0,Math.max(0,world.w-innerWidth));
-  cam.y=clamp(cam.y,0,Math.max(0,world.h-innerHeight));
+  cam.x=clamp(cam.x,0,Math.max(0,world.w-innerWidth/cameraZoom));
+  cam.y=clamp(cam.y,0,Math.max(0,world.h-innerHeight/cameraZoom));
   p.attackFx=Math.max(0,p.attackFx-dt*5);
   if(boss.alive&&dist(p,boss)<280){
     boss.cd-=dt;if(boss.cd<=0){boss.cd=1.2;p.hp-=8;log('💥 Vargos t’attaque !');if(p.hp<=0){p.hp=p.maxhp;p.x=760;p.y=980;log('☠️ Tu as été vaincu. Retour à Port Azure.');}}
@@ -1161,8 +1196,8 @@ window.SOL_directEnter=function(account){
     c.style.visibility='visible';
     c.style.pointerEvents='auto';
 
-    cam.x=clamp(p.x-innerWidth/2,0,Math.max(0,world.w-innerWidth));
-    cam.y=clamp(p.y-innerHeight/2,0,Math.max(0,world.h-innerHeight));
+    cam.x=clamp(p.x-innerWidth/(2*cameraZoom),0,Math.max(0,world.w-innerWidth/cameraZoom));
+    cam.y=clamp(p.y-innerHeight/(2*cameraZoom),0,Math.max(0,world.h-innerHeight/cameraZoom));
     updateHUD();
     draw();
 
