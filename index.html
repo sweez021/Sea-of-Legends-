@@ -217,8 +217,18 @@ html,body{width:100%;height:100%;overflow:hidden!important} body{margin:0}\n
 .character-msg{text-align:center;color:#ffd166;min-height:18px}
 @media(max-width:700px){.creator-layout{grid-template-columns:1fr}.preview-card{max-width:360px;margin:auto}.character-panel{padding:18px}}
 
-.logout-game{position:fixed;right:18px;bottom:18px;z-index:20;border:1px solid #9a752d;border-radius:8px;background:rgba(7,18,27,.9);color:#ffd166;padding:9px 13px;font-weight:900;cursor:pointer}
+
 .logout-game:hover{background:#1a3040}
+
+.logout-game{
+ position:fixed;right:18px;top:132px;z-index:30;
+ border:1px solid #9a752d;border-radius:9px;
+ background:rgba(7,18,27,.94);color:#ffd166;
+ padding:9px 14px;font-weight:900;cursor:pointer;
+ box-shadow:0 4px 12px rgba(0,0,0,.35);pointer-events:auto
+}
+.logout-game:hover{background:#1a3040}
+@media(max-width:700px){.logout-game{right:12px;top:230px}}
 </style>
 </head>
 <body>
@@ -926,6 +936,33 @@ document.addEventListener('click',function(e){
   }
 },true);
 
+
+/* ===== Déconnexion temporaire — sera déplacée dans le menu in-game plus tard ===== */
+(function(){
+  const btn=document.getElementById('logoutGame');
+  if(!btn)return;
+  btn.onclick=function(e){
+    e.preventDefault();
+    e.stopPropagation();
+    try{
+      const account=JSON.parse(localStorage.getItem('sol_current_account')||'null');
+      if(account && typeof solSavePosition==='function') solSavePosition(account);
+    }catch(err){console.warn(err)}
+    try{
+      if(typeof game!=='undefined') game=false;
+      localStorage.removeItem('sol_current_account');
+    }catch(err){}
+    const start=document.getElementById('start');
+    if(start){
+      start.style.display='flex';
+      start.style.visibility='visible';
+      start.style.pointerEvents='auto';
+    }
+    document.querySelectorAll('.auth-modal.open').forEach(m=>m.classList.remove('open'));
+    if(typeof renderRememberedAccounts==='function')renderRememberedAccounts();
+    if(typeof log==='function')log('Déconnexion réussie. Ta position a été sauvegardée.');
+  };
+})();
 </script>
 </body>
 </html>
