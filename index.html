@@ -549,7 +549,59 @@ document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',
 document.querySelectorAll('.game-modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open')}));
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.game-modal.open').forEach(m=>m.classList.remove('open'))});
 document.getElementById('registerBtn').onclick=async()=>{const name=document.getElementById('regName').value.trim(),email=document.getElementById('regEmail').value.trim().toLowerCase(),pass=document.getElementById('regPassword').value;if(name.length<2)return showAuthMsg('registerMsg','Nom de pirate trop court.');if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))return showAuthMsg('registerMsg','Adresse e-mail invalide.');if(pass.length<6)return showAuthMsg('registerMsg','Mot de passe : 6 caractères minimum.');if(getAccounts().some(a=>a.email===email))return showAuthMsg('registerMsg','Ce compte est déjà mémorisé sur cet appareil.');const u={name,email,passwordHash:await hashPassword(pass)};localStorage.setItem(USER_KEY,JSON.stringify(u));rememberAccount(u);document.getElementById('loginEmail').value=email;showAuthMsg('registerMsg','Compte créé ! Connecte-toi pour commencer.',true)}
-document.getElementById('loginBtn').onclick=async()=>{const email=document.getElementById('loginEmail').value.trim().toLowerCase(),pass=document.getElementById('loginPassword').value,raw=localStorage.getItem(USER_KEY);if(!raw)return showAuthMsg('loginMsg','Aucun compte local. Crée d’abord ton compte.');const u=JSON.parse(raw),h=await hashPassword(pass);if(u.email!==email||u.passwordHash!==h)return showAuthMsg('loginMsg','E-mail ou mot de passe incorrect.');if(document.getElementById('rememberMe').checked)rememberAccount(u);showAuthMsg('loginMsg','Connexion réussie !',true);setTimeout(()=>startGame(u.name),250)}
+document.getElementById('registerBtn').onclick=async()=>{
+  const name=document.getElementById('regName').value.trim();
+  const email=document.getElementById('regEmail').value.trim().toLowerCase();
+  const pass=document.getElementById('regPassword').value;
+  if(name.length<2)return showAuthMsg('registerMsg','Nom de pirate trop court.');
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))return showAuthMsg('registerMsg','Adresse e-mail invalide.');
+  if(pass.length<6)return showAuthMsg('registerMsg','Mot de passe : 6 caractères minimum.');
+  if(getAccounts().some(a=>a.email===email))return showAuthMsg('registerMsg','Ce compte est déjà mémorisé sur cet appareil.');
+  const u={name,email,passwordHash:await hashPassword(pass)};
+  localStorage.setItem(USER_KEY,JSON.stringify(u));
+  rememberAccount(u);
+  document.getElementById('loginEmail').value=email;
+  document.getElementById('loginPassword').value=pass;
+  showAuthMsg('registerMsg','Compte créé ! Connexion en cours...',true);
+  setTimeout(()=>solHandleLogin(u),250);
+};
+
+async function solHandleLogin(accountOrUser){
+  try{
+    let u=accountOrUser;
+    if(!u){
+      const email=document.getElementById('loginEmail').value.trim().toLowerCase();
+      const pass=document.getElementById('loginPassword').value;
+      const raw=localStorage.getItem(USER_KEY);
+      if(!raw)return showAuthMsg('loginMsg','Aucun compte local. Crée d’abord ton compte.');
+      u=JSON.parse(raw);
+      const hashed=await hashPassword(pass);
+      if(u.email!==email || u.passwordHash!==hashed)
+        return showAuthMsg('loginMsg','E-mail ou mot de passe incorrect.');
+    }
+    let accounts=getAccounts();
+    let account=accounts.find(a=>a.email===u.email)||u;
+    const currentRaw=localStorage.getItem('sol_current_account');
+    try{
+      const current=currentRaw?JSON.parse(currentRaw):null;
+      if(current && current.email===account.email && current.character) account=current;
+    }catch(e){}
+    solSetCurrent(account);
+    showAuthMsg('loginMsg','Connexion réussie !',true);
+    if(account.character){
+      solStartGame(account);
+    }else{
+      localStorage.setItem('sol_pending_name',account.name||'');
+      document.querySelectorAll('.auth-modal.open').forEach(modal=>modal.classList.remove('open'));
+      SOLCharacter.open();
+    }
+  }catch(err){
+    console.error(err);
+    showAuthMsg('loginMsg','Une erreur est survenue. Recharge la page puis réessaie.');
+  }
+}
+
+document.getElementById('loginBtn').onclick=()=>solHandleLogin(null);
 renderRememberedAccounts();
 document.getElementById('attack').onclick=attack;document.getElementById('interact').onclick=interact;
 document.querySelectorAll('#mobile button').forEach(b=>b.addEventListener('pointerdown',()=>{let k=b.dataset.k;let map={up:'w',down:'s',left:'a',right:'d'};keys[map[k]]=true;setTimeout(()=>keys[map[k]]=false,180)}));
@@ -563,26 +615,6 @@ function SOL_afterLogin(){
   }
 }
 
-document.getElementById('loginBtn')?.addEventListener('click',()=>{
-  setTimeout(()=>{
-    const email=(document.getElementById('loginEmail')?.value||'').trim();
-    if(email){
-      localStorage.setItem('sol_current_account',JSON.stringify({email}));
-      SOL_afterLogin();
-    }
-  },30);
-});
-document.getElementById('registerBtn')?.addEventListener('click',()=>{
-  setTimeout(()=>{
-    const email=(document.getElementById('regEmail')?.value||'').trim();
-    const name=(document.getElementById('regName')?.value||'').trim();
-    if(email && name){
-      localStorage.setItem('sol_current_account',JSON.stringify({email,name}));
-      localStorage.setItem('sol_pending_name',name);
-      SOL_afterLogin();
-    }
-  },30);
-});
 
 function SOL_saveRememberedAccount(){
   const email=(document.getElementById('regEmail')?.value||'').trim();
@@ -707,7 +739,6 @@ window.SOL_loginRememberedAccount=function(account){
     solStartGame(account);
     return;
   }
-  /* Ancien compte sans personnage : on demande d'abord d'en créer un. */
   localStorage.setItem('sol_pending_name',account.name||'');
   const modal=document.getElementById('rememberModal');
   if(modal)modal.classList.remove('open');
@@ -732,23 +763,18 @@ window.SOL_finishCharacterAndStart=function(character){
 document.getElementById('logoutGame')?.addEventListener('click',solDisconnect);
 
 
-document.getElementById('loginBtn')?.addEventListener('click',()=>{
-  setTimeout(()=>{
-    const email=(document.getElementById('loginEmail')?.value||'').trim().toLowerCase();
-    const raw=localStorage.getItem(USER_KEY);
-    if(!raw || !email)return;
-    try{
-      const u=JSON.parse(raw);
-      if(u.email===email){
-        const accounts=getAccounts();
-        const acc=accounts.find(a=>a.email===email)||u;
-        solSetCurrent(acc);
-        if(acc.character)solStartGame(acc);
-        else SOLCharacter.open();
-      }
-    }catch(e){}
-  },320);
-});
+
+
+/* Compatibilité avec l'ancienne V0.2 : évite toute erreur si startGame est appelé. */
+window.startGame=function(name){
+  const accounts=getAccounts();
+  const account=accounts.find(a=>a.name===name)||accounts[0]||{name:name||'Pirate'};
+  if(account.character) solStartGame(account);
+  else {
+    localStorage.setItem('sol_pending_name',account.name||name||'');
+    SOLCharacter.open();
+  }
+};
 
 </script>
 </body>
