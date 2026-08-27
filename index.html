@@ -395,12 +395,24 @@ function resize(){
 addEventListener('resize',resize); resize();
 
 const keys={};
+function solMovementKey(e,down){
+  const k=e.key.toLowerCase();
+  const movement=['z','q','s','d','w','a','arrowup','arrowleft','arrowdown','arrowright'];
+  if(!movement.includes(k))return;
+  if(game){
+    e.preventDefault();
+    e.stopPropagation();
+    keys[k]=down;
+  }
+}
 addEventListener('keydown',e=>{
-  const k=e.key.toLowerCase(); keys[k]=true;
-  if(e.code==='Space'){e.preventDefault();attack();}
-  if(k==='e')interact();
+  solMovementKey(e,true);
+  const k=e.key.toLowerCase();
+  if(e.code==='Space' && game){e.preventDefault();e.stopPropagation();attack();}
+  if(k==='e' && game){e.preventDefault();e.stopPropagation();interact();}
 });
-addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+addEventListener('keyup',e=>solMovementKey(e,false));
+window.addEventListener('blur',()=>{Object.keys(keys).forEach(k=>keys[k]=false);});
 
 let game=false,last=0,cam={x:0,y:0},worldTime=0;
 const world={w:3000,h:1900};
@@ -616,8 +628,8 @@ function interact(){
 function tick(t){
   if(!game)return;
   const dt=Math.min(.033,(t-last)/1000||0);last=t;worldTime+=dt;
-  let dx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.q||keys.arrowleft?1:0);
-  let dy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.z||keys.arrowup?1:0);
+  let dx=(keys.d||keys.arrowright?1:0)-(keys.q||keys.a||keys.arrowleft?1:0);
+  let dy=(keys.s||keys.arrowdown?1:0)-(keys.z||keys.w||keys.arrowup?1:0);
   if(dx||dy){
     const l=Math.hypot(dx,dy);p.x+=dx/l*(p.speed+bonus().speed)*dt;p.y+=dy/l*(p.speed+bonus().speed)*dt;
     p.facing=dx<0?-1:1;
@@ -1180,6 +1192,17 @@ document.querySelectorAll('#aspirationChoices .choice').forEach(btn=>{
       '<br>❤️ PV '+a.pv+' · ⚔️ Dégâts +'+a.damage+' · 🏃 Vitesse '+(a.speed>=0?'+':'')+a.speed;
   });
 });
+
+/* Ne pas déplacer le personnage lorsqu'on écrit dans un champ. */
+document.addEventListener('keydown',e=>{
+  const t=e.target;
+  if(t && (t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable)){
+    const k=e.key.toLowerCase();
+    if(['z','q','s','d','w','a','arrowup','arrowdown','arrowleft','arrowright'].includes(k)){
+      keys[k]=false;
+    }
+  }
+},true);
 </script>
 </body>
 </html>
