@@ -93,6 +93,70 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:
 .auth-msg{min-height:18px;text-align:center;font-size:12px;margin:8px 0 0}
 .scene-footer{margin:14px auto 0;padding:9px 18px;border:1px solid #9a752d;border-radius:12px;background:rgba(5,14,21,.86);color:#ffd166;text-align:center;font-weight:900;letter-spacing:.8px;font-size:12px}
 @media(max-width:900px){.auth-layout{grid-template-columns:1fr;max-width:520px}.login-scene{padding-top:20px}.game-logo h1{font-size:40px}}
+
+.login-scene{overflow:hidden!important}
+.login-scene:after{
+  content:"";
+  position:absolute;
+  left:-10%;
+  right:-10%;
+  bottom:-2%;
+  height:42%;
+  z-index:0;
+  pointer-events:none;
+  opacity:.62;
+  background:
+    repeating-radial-gradient(ellipse at 50% 100%, transparent 0 18px, rgba(255,255,255,.14) 19px 21px, transparent 22px 42px);
+  background-size:760px 180px;
+  animation:seaWaves 8s linear infinite;
+  transform:perspective(400px) rotateX(12deg) scale(1.15);
+  mix-blend-mode:screen;
+}
+.login-scene:before{
+  content:"";
+  position:absolute;
+  left:-15%;
+  right:-15%;
+  bottom:4%;
+  height:25%;
+  z-index:0;
+  pointer-events:none;
+  background:
+    repeating-linear-gradient(174deg, transparent 0 18px, rgba(39,179,255,.16) 19px 22px, transparent 23px 38px);
+  background-size:520px 120px;
+  animation:seaFlow 5.5s ease-in-out infinite;
+  opacity:.72;
+  mix-blend-mode:screen;
+}
+@keyframes seaWaves{
+  0%{background-position:0 0;transform:perspective(400px) rotateX(12deg) translateX(0) scale(1.15)}
+  50%{background-position:380px 8px;transform:perspective(400px) rotateX(12deg) translateX(-55px) scale(1.15)}
+  100%{background-position:760px 0;transform:perspective(400px) rotateX(12deg) translateX(0) scale(1.15)}
+}
+@keyframes seaFlow{
+  0%,100%{transform:translateX(0) translateY(0)}
+  50%{transform:translateX(-80px) translateY(7px)}
+}
+@media (prefers-reduced-motion:reduce){
+  .login-scene:before,.login-scene:after{animation:none!important}
+}
+
+.sea-motion-badge{
+  position:relative;
+  z-index:2;
+  width:max-content;
+  max-width:90%;
+  margin:0 auto 7px;
+  padding:5px 12px;
+  border:1px solid rgba(151,207,235,.55);
+  border-radius:999px;
+  background:rgba(3,20,32,.72);
+  color:#bfeaff;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:1px;
+  text-align:center;
+}
 </style>
 </head>
 <body>
@@ -131,6 +195,8 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;background:
 <label>MOT DE PASSE</label><input id="regPassword" type="password" autocomplete="new-password" placeholder="Créez un mot de passe">
 <button id="registerBtn" class="main-action blue-action">CRÉER MON COMPTE</button><p id="registerMsg" class="auth-msg"></p></section>
 </div>
+
+<div class="sea-motion-badge">🌊 MER EN MOUVEMENT</div>
 <div class="scene-footer">🌊 LE GRAND LINE VOUS ATTEND • QUELLE LÉGENDE ALLEZ-VOUS DEVENIR ? 🌊</div>
 </div></div>
 <script>
