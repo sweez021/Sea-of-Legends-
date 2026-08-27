@@ -386,331 +386,341 @@ const SOL_ASPIRATIONS={
  'Forgeron':{pv:120,damage:15,speed:-5,crit:2,desc:'Fabrique et améliore les équipements les plus puissants.'}
 };
 
-const c=document.getElementById('game'),ctx=c.getContext('2d');
-let W,H,scale=1;
+const c=document.getElementById('game');
+const ctx=c.getContext('2d');
+
+let W=innerWidth,H=innerHeight,dpr=devicePixelRatio||1;
+let cameraZoom=1;
+let camera={x:0,y:0};
+let game=false,last=0,worldTime=0;
+const keys={z:false,q:false,s:false,d:false,w:false,a:false,
+  arrowup:false,arrowdown:false,arrowleft:false,arrowright:false};
+
 function resize(){
-  W=c.width=innerWidth*devicePixelRatio; H=c.height=innerHeight*devicePixelRatio;
-  scale=devicePixelRatio; ctx.setTransform(scale,0,0,scale,0,0);
+  dpr=devicePixelRatio||1;
+  c.width=Math.floor(innerWidth*dpr);
+  c.height=Math.floor(innerHeight*dpr);
+  c.style.width='100%';c.style.height='100%';
+  W=innerWidth;H=innerHeight;
+  ctx.setTransform(dpr*cameraZoom,0,0,dpr*cameraZoom,0,0);
 }
-addEventListener('resize',resize); resize();
-/* ===== ZOOM CENTRÉ SUR LE PERSONNAGE ===== */
+addEventListener('resize',resize);
+resize();
+
+/* =========================
+   MONDE : positions absolues
+   ========================= */
+const world={w:3000,h:1900};
+
+const player={
+  x:760,y:980,r:23,speed:245,hp:100,maxhp:100,lvl:1,xp:0,
+  bounty:0,kills:0,name:'Pirate',aspiration:'Combattant',
+  facing:1,attackFx:0,coins:250
+};
+
+/* Les PNJ sont des points fixes dans le monde.
+   Leur x/y ne sont JAMAIS calculés à partir du joueur ou du clavier. */
+const NPC={
+  rovan:{x:930,y:850,r:27,name:'Capitaine Rovan'},
+  forge:{x:1100,y:730,r:25,name:'Maître Ferron'},
+  doctor:{x:650,y:690,r:25,name:'Docteure Lina'},
+  cook:{x:850,y:690,r:25,name:'Chef Marin'},
+  navigator:{x:500,y:1100,r:25,name:'Navigateur Nao'},
+  merchant:{x:560,y:930,r:25,name:'Marchand Milo'}
+};
+
+const enemies=[
+ {x:1370,y:980,r:23,hp:50,maxhp:50,alive:true},
+ {x:1530,y:820,r:23,hp:50,maxhp:50,alive:true},
+ {x:1680,y:1060,r:23,hp:50,maxhp:50,alive:true},
+ {x:1840,y:760,r:23,hp:60,maxhp:60,alive:true},
+ {x:1990,y:920,r:23,hp:60,maxhp:60,alive:true}
+];
+const boss={x:2390,y:620,r:45,hp:240,maxhp:240,alive:true,cd:0};
+let questStarted=false,questDone=false,logs=[];
+
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+function log(t){
+  logs.unshift(t);logs=logs.slice(0,3);
+  const el=document.getElementById('log');
+  if(el)el.innerHTML=logs.map(x=>'<div>'+x+'</div>').join('');
+}
+function gainXP(n){
+  player.xp+=n;
+  while(player.xp>=100){
+    player.xp-=100;player.lvl++;
+    player.maxhp+=12;player.hp=player.maxhp;
+    log('✨ Niveau '+player.lvl+' !');
+  }
+}
+function updateHUD(){
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v};
+  set('playerName',player.name);set('lvl',player.lvl);
+  set('bounty',player.bounty);set('hpText',player.hp+'/'+player.maxhp);
+  set('xpText',player.xp+'/100');set('kills',player.kills+'/3');
+  const hf=document.getElementById('hpFill'),xf=document.getElementById('xpFill');
+  if(hf)hf.style.width=(100*player.hp/player.maxhp)+'%';
+  if(xf)xf.style.width=player.xp+'%';
+  const q=document.getElementById('questText');
+  if(q)q.textContent=!questStarted?
+    'Va parler au capitaine Rovan, puis élimine 3 bandits.':
+    (!questDone?'Élimine 3 bandits près de la route du fort.':
+    'Retourne voir Rovan pour recevoir ta récompense.');
+}
+
+
+function bonus(){
+  const a=SOL_ASPIRATIONS[player.aspiration];
+  return a?{damage:a.damage,speed:a.speed}:{damage:0,speed:0};
+}
+
+/* =========================
+   CLAVIER : JOUEUR SEULEMENT
+   ========================= */
+function movementKey(e,down){
+  if(!game)return;
+  if(e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
+  const k=e.key.toLowerCase();
+  if(Object.prototype.hasOwnProperty.call(keys,k)){
+    e.preventDefault();
+    keys[k]=down;
+  }
+}
+addEventListener('keydown',e=>{
+  movementKey(e,true);
+  if(!game)return;
+  if(e.code==='Space'){e.preventDefault();attack();}
+  else if(e.key.toLowerCase()==='e'){e.preventDefault();interact();}
+});
+addEventListener('keyup',e=>movementKey(e,false));
+addEventListener('blur',()=>Object.keys(keys).forEach(k=>keys[k]=false));
+
+/* =========================
+   CAMÉRA : TOUJOURS SUR LE JOUEUR
+   ========================= */
+function updateCamera(){
+  const viewW=W/cameraZoom,viewH=H/cameraZoom;
+  updateCamera();
+}
+
+/* Zoom centré exclusivement sur le joueur. */
 addEventListener('wheel',e=>{
   if(!game)return;
   e.preventDefault();
-
-  const oldZoom=cameraZoom;
-  const step=e.deltaY<0 ? 0.12 : -0.12;
-  cameraZoom=clamp(cameraZoom+step,0.55,2.0);
-
-  /* La caméra reste TOUJOURS centrée sur le joueur.
-     Le zoom ne déplace donc jamais le point de vue vers la souris. */
-  const viewW=innerWidth/cameraZoom;
-  const viewH=innerHeight/cameraZoom;
-  cam.x=clamp(p.x-viewW/2,0,Math.max(0,world.w-viewW));
-  cam.y=clamp(p.y-viewH/2,0,Math.max(0,world.h-viewH));
-
-  resize();
-  draw();
+  cameraZoom=clamp(cameraZoom+(e.deltaY<0?0.12:-0.12),0.55,2);
+  updateCamera();
+  resize();draw();
 },{passive:false});
 
-
-
-
-const keys={z:false,q:false,s:false,d:false,w:false,a:false,
-  arrowup:false,arrowdown:false,arrowleft:false,arrowright:false};
-/* ZQSD = joueur uniquement. Aucun PNJ n'est lié au clavier. */
-function solMovementKey(e,down){
-  if(!game)return;
-  const k=e.key.toLowerCase();
-  if(!Object.prototype.hasOwnProperty.call(keys,k))return;
-  if(e.target && (e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.isContentEditable))return;
-  e.preventDefault();
-  e.stopPropagation();
-  keys[k]=down;
+/* =========================
+   DESSIN
+   ========================= */
+function label(x,y,t){
+  ctx.font='bold 14px system-ui';ctx.textAlign='center';
+  ctx.fillStyle='rgba(5,15,24,.8)';ctx.fillText(t,x+1,y+1);
+  ctx.fillStyle='white';ctx.fillText(t,x,y);
 }
-window.addEventListener('keydown',e=>{
-  solMovementKey(e,true);
-  if(!game)return;
-  const k=e.key.toLowerCase();
-  if(e.code==='Space'){e.preventDefault();e.stopPropagation();attack();}
-  else if(k==='e'){e.preventDefault();e.stopPropagation();interact();}
-});
-window.addEventListener('keyup',e=>solMovementKey(e,false));
-window.addEventListener('blur',()=>Object.keys(keys).forEach(k=>keys[k]=false));
-
-let game=false,last=0,cam={x:0,y:0},worldTime=0;
-let cameraZoom=1;
-
-const world={w:3000,h:1900};
-const p={x:760,y:980,r:23,speed:245,hp:100,maxhp:100,lvl:1,xp:0,bounty:0,kills:0,name:'Pirate',aspiration:'Combattant',facing:1,attackFx:0,coins:250};
-const npc={x:930,y:850,r:27,name:'Capitaine Rovan',homeX:930,homeY:850};
-const forgeNpc={x:1120,y:690,r:25,name:'Maître Ferron',homeX:1120,homeY:690};
-const doctorNpc={x:720,y:690,r:25,name:'Docteure Lina',homeX:720,homeY:690};
-const cookNpc={x:900,y:690,r:25,name:'Chef Marin',homeX:900,homeY:690};
-const navigatorNpc={x:500,y:1100,r:25,name:'Navigateur Nao',homeX:500,homeY:1100};
-const merchant={x:560,y:930,r:25,name:'Marchand Milo'};
-const dock={x:360,y:1120};
-const boss={x:2390,y:620,r:45,hp:240,maxhp:240,alive:true,cd:0};
-
-/* ===== PNJ STATIQUES : positions monde immuables ===== */
-const SOL_NPC_HOME = new Map();
-function solRegisterNPC(o){
-  if(!o)return;
-  SOL_NPC_HOME.set(o,{x:o.x,y:o.y});
-  Object.defineProperty(o,'homeX',{value:o.x,writable:false,configurable:false});
-  Object.defineProperty(o,'homeY',{value:o.y,writable:false,configurable:false});
+function ellipse(x,y,rx,ry,fill,stroke,lw){
+  ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);
+  if(fill){ctx.fillStyle=fill;ctx.fill()}
+  if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw||1;ctx.stroke()}
 }
-function solLockNPCs(){
-  SOL_NPC_HOME.forEach((pos,o)=>{
-    o.x=pos.x;
-    o.y=pos.y;
-  });
-}
-[npc,forgeNpc,doctorNpc,cookNpc,navigatorNpc,merchant].forEach(solRegisterNPC);
-
-const enemies=[
- {x:1370,y:980,r:23,hp:50,maxhp:50,alive:true,cd:0},
- {x:1530,y:820,r:23,hp:50,maxhp:50,alive:true,cd:0},
- {x:1680,y:1060,r:23,hp:50,maxhp:50,alive:true,cd:0},
- {x:1840,y:760,r:23,hp:60,maxhp:60,alive:true,cd:0},
- {x:1990,y:920,r:23,hp:60,maxhp:60,alive:true,cd:0}
-];
-let questStarted=false,questDone=false,logs=[];
-const aspirationBonus={
- 'Sabreur':{damage:12,speed:0},
- 'Tireur d’élite':{damage:8,speed:12},
- 'Combattant':{damage:16,speed:0},
- 'Médecin':{damage:3,speed:0},
- 'Navigateur':{damage:5,speed:28},
- 'Cuisinier':{damage:7,speed:8},
- 'Charpentier':{damage:9,speed:0},
- 'Musicien':{damage:6,speed:18},
- 'Archéologue':{damage:5,speed:6},
- 'Forgeron':{damage:14,speed:-4}
-};
-function bonus(){
-  const a=SOL_ASPIRATIONS[p.aspiration];
-  return a?{damage:a.damage,speed:a.speed}:({damage:0,speed:0});
-}
-function log(t){logs.unshift(t);logs=logs.slice(0,3);const el=document.getElementById('log');if(el)el.innerHTML=logs.map(x=>'<div>'+x+'</div>').join('');}
-function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
-function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
-function worldToScreen(x,y){return{x:x-cam.x,y:y-cam.y}}
 function barDraw(x,y,w,h,v){
   ctx.fillStyle='rgba(0,0,0,.65)';ctx.fillRect(x,y,w,h);
   ctx.fillStyle='#e94b5f';ctx.fillRect(x,y,w*clamp(v,0,1),h);
 }
-function gainXP(n){
-  p.xp+=n;
-  while(p.xp>=100){p.xp-=100;p.lvl++;p.maxhp+=12;p.hp=p.maxhp;log('✨ Niveau '+p.lvl+' !');}
-}
-function updateHUD(){
-  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v};
-  set('playerName',p.name);set('lvl',p.lvl);set('bounty',p.bounty);set('hpText',p.hp+'/'+p.maxhp);
-  set('xpText',p.xp+'/100');set('kills',p.kills+'/3');
-  const hf=document.getElementById('hpFill'),xf=document.getElementById('xpFill');
-  if(hf)hf.style.width=(100*p.hp/p.maxhp)+'%';if(xf)xf.style.width=p.xp+'%';
-  const q=document.getElementById('questText');
-  if(q)q.textContent=!questStarted?'Va parler au capitaine Rovan, puis élimine 3 bandits.':(!questDone?'Élimine 3 bandits près de la route du fort.':'Retourne voir Rovan pour recevoir ta récompense.');
-}
-function ellipse(x,y,rx,ry,fill,stroke,lw){
-  ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);
-  if(fill){ctx.fillStyle=fill;ctx.fill()} if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw||1;ctx.stroke()}
-}
 function drawTree(x,y){
   ctx.fillStyle='#68472d';ctx.fillRect(x-8,y,16,48);
-  ellipse(x,y,34,38,'#176c48');ellipse(x-20,y-15,23,27,'#2e9b5e');ellipse(x+20,y-10,24,30,'#238454');
+  ellipse(x,y,34,38,'#176c48');ellipse(x-20,y-15,23,27,'#2e9b5e');
+  ellipse(x+20,y-10,24,30,'#238454');
 }
 function drawHouse(x,y,w,h,name){
   ctx.fillStyle='#c99655';ctx.fillRect(x,y,w,h);
   ctx.fillStyle='#ead6a0';ctx.fillRect(x+18,y+30,w-36,h-30);
-  ctx.fillStyle='#a94436';ctx.beginPath();ctx.moveTo(x-10,y+30);ctx.lineTo(x+w/2,y-45);ctx.lineTo(x+w+10,y+30);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#a94436';ctx.beginPath();
+  ctx.moveTo(x-10,y+30);ctx.lineTo(x+w/2,y-45);ctx.lineTo(x+w+10,y+30);
+  ctx.closePath();ctx.fill();
   ctx.fillStyle='#6b4025';ctx.fillRect(x+w/2-22,y+h-80,44,80);
-  ctx.fillStyle='#86b9c8';ctx.fillRect(x+30,y+58,38,38);ctx.fillRect(x+w-68,y+58,38,38);
-  label(x+w/2,y+h+25,name);
+  ctx.fillStyle='#86b9c8';ctx.fillRect(x+30,y+58,38,38);
+  ctx.fillRect(x+w-68,y+58,38,38);label(x+w/2,y+h+25,name);
+}
+function drawNPC(o,n){
+  const x=o.x,y=o.y;
+  ellipse(x,y,27,27,'#e59b37');ellipse(x,y-26,14,14,'#f2c49d');
+  label(x,y+50,n);
+}
+function drawMerchant(o){
+  ellipse(o.x,o.y,25,25,'#8e5fc0');ellipse(o.x,o.y-24,13,13,'#f2c49d');
+  label(o.x,o.y+47,'🪙 '+o.name);
+}
+function drawEnemy(o,n){
+  ellipse(o.x,o.y,23,23,'#bb4654');ellipse(o.x,o.y-23,12,12,'#f2c49d');
+  barDraw(o.x-25,o.y-42,50,6,o.hp/o.maxhp);label(o.x,o.y+43,n);
+}
+function drawBoss(o){
+  ellipse(o.x,o.y,45,45,'#673d9d');ellipse(o.x,o.y-43,19,19,'#f2c49d');
+  barDraw(o.x-60,o.y-72,120,9,o.hp/o.maxhp);label(o.x,o.y+68,'👑 Vargos');
+}
+function drawPlayer(){
+  const bob=Math.sin(worldTime*7)*2;
+  ctx.save();ctx.translate(player.x,player.y+bob);
+  ctx.fillStyle='rgba(0,0,0,.2)';ctx.beginPath();ctx.ellipse(0,27,27,9,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#253d9a';ctx.beginPath();ctx.arc(0,0,23,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#f0c49d';ctx.beginPath();ctx.arc(0,-27,14,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#e04a45';ctx.fillRect(-19,-43,38,8);
+  label(0,53,player.name+' · '+player.aspiration);
+  if(player.attackFx>0){
+    ctx.strokeStyle='rgba(255,240,150,'+player.attackFx+')';ctx.lineWidth=6;
+    ctx.beginPath();ctx.arc(0,0,55,-1.1,1.1);ctx.stroke();
+  }
+  ctx.restore();
 }
 function draw(){
-  ctx.clearRect(0,0,innerWidth,innerHeight);
-  const t=worldTime;
-  // Animated ocean
-  ctx.fillStyle='#3c9fca';ctx.fillRect(0,0,innerWidth,innerHeight);
-  ctx.save();ctx.translate(-cam.x,-cam.y);
+  ctx.setTransform(dpr*cameraZoom,0,0,dpr*cameraZoom,0,0);
+  ctx.clearRect(0,0,W/cameraZoom,H/cameraZoom);
+  ctx.save();
+  ctx.translate(-camera.x,-camera.y);
+
+  /* Mer */
+  ctx.fillStyle='#3c9fca';ctx.fillRect(0,0,world.w,world.h);
   ctx.globalAlpha=.25;ctx.strokeStyle='#d8f6ff';ctx.lineWidth=3;
   for(let y=40;y<world.h;y+=58){
     ctx.beginPath();
     for(let x=0;x<world.w;x+=55){
-      const yy=y+Math.sin(x*.018+t*1.7+y*.01)*5;
+      const yy=y+Math.sin(x*.018+worldTime*1.7+y*.01)*5;
       if(x===0)ctx.moveTo(x,yy);else ctx.lineTo(x,yy);
     }
     ctx.stroke();
   }
   ctx.globalAlpha=1;
 
-  // Main island + beach
   ellipse(1500,970,1320,820,'#77bd67','#e7cf87',65);
-  // small islands
   ellipse(360,420,170,105,'#72b95f','#e7cf87',32);
   ellipse(2600,1450,220,130,'#72b95f','#e7cf87',32);
 
-  // paths
   ctx.strokeStyle='#c9a16a';ctx.lineWidth=42;ctx.lineCap='round';
-  ctx.beginPath();ctx.moveTo(760,980);ctx.lineTo(930,850);ctx.lineTo(1370,980);ctx.lineTo(1850,760);ctx.lineTo(2390,620);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(760,980);ctx.lineTo(930,850);ctx.lineTo(1370,980);
+  ctx.lineTo(1850,760);ctx.lineTo(2390,620);ctx.stroke();
   ctx.beginPath();ctx.moveTo(930,850);ctx.lineTo(650,930);ctx.lineTo(360,1120);ctx.stroke();
 
-  // Port Azure
-  ctx.fillStyle='#d5ad6b';ctx.fillRect(390,760,600,300);
   drawHouse(430,785,155,185,'Auberge');
   drawHouse(620,785,155,185,'Marché');
   drawHouse(810,785,155,185,'Taverne');
   drawHouse(1010,785,180,185,'Forge');
   drawHouse(560,575,155,150,'Infirmerie');
   drawHouse(760,575,155,150,'Cuisine');
-  // pier + ship
-  ctx.fillStyle='#704727';ctx.fillRect(270,1080,480,38);ctx.fillRect(350,1118,330,28);
-  ctx.fillStyle='#7e3e2c';ctx.beginPath();ctx.moveTo(390,1146);ctx.lineTo(650,1146);ctx.lineTo(600,1220);ctx.lineTo(440,1220);ctx.closePath();ctx.fill();
-  ctx.fillStyle='#f0e4c2';ctx.beginPath();ctx.moveTo(510,1146);ctx.lineTo(510,980);ctx.lineTo(625,1146);ctx.closePath();ctx.fill();
-  ctx.fillStyle='#5d321e';ctx.fillRect(505,985,10,165);
 
-  // Fort Vargos
+  ctx.fillStyle='#704727';ctx.fillRect(270,1080,480,38);ctx.fillRect(350,1118,330,28);
+  ctx.fillStyle='#7e3e2c';ctx.beginPath();ctx.moveTo(390,1146);ctx.lineTo(650,1146);
+  ctx.lineTo(600,1220);ctx.lineTo(440,1220);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#f0e4c2';ctx.beginPath();ctx.moveTo(510,1146);ctx.lineTo(510,980);
+  ctx.lineTo(625,1146);ctx.closePath();ctx.fill();ctx.fillStyle='#5d321e';ctx.fillRect(505,985,10,165);
+
   ctx.fillStyle='#777f88';ctx.fillRect(2250,430,310,260);
   for(let i=0;i<5;i++)ctx.fillRect(2240+i*65,395,48,50);
-  ctx.fillStyle='#4e5861';ctx.fillRect(2365,575,80,115);
-  label(2405,720,'FORT VARGOS');
+  ctx.fillStyle='#4e5861';ctx.fillRect(2365,575,80,115);label(2405,720,'FORT VARGOS');
 
-  // trees
   for(let i=0;i<45;i++){
     const x=120+(i*211)%2700,y=180+(i*137)%1450;
-    if(x>350&&x<1030&&y>730&&y<1080)continue;
+    if(x>350&&x<1200&&y>550&&y<1080)continue;
     if(x>2180&&y>360&&y<760)continue;
     drawTree(x,y);
   }
-
-  // flowers / rocks
   for(let i=0;i<70;i++){
     const x=90+(i*97)%2820,y=120+(i*181)%1650;
-    if(i%3===0){ctx.fillStyle='#e6d68b';ctx.fillRect(x,y,5,5)}
-    else {ctx.fillStyle='#6e7f73';ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fill()}
+    ctx.fillStyle=i%3===0?'#e6d68b':'#6e7f73';
+    ctx.beginPath();ctx.arc(x,y,i%3===0?3:5,0,Math.PI*2);ctx.fill();
   }
 
-  // entities
-  drawNPC(npc,'💬 Rovan');
-  drawNPC(forgeNpc,'⚒️ Maître Ferron');
-  drawNPC(doctorNpc,'🩺 Docteure Lina');
-  drawNPC(cookNpc,'🍳 Chef Marin');
-  drawNPC(navigatorNpc,'🧭 Navigateur Nao');
-  drawMerchant(merchant);
+  /* PNJ : coordonnées monde fixes */
+  drawNPC(NPC.rovan,'💬 Rovan');
+  drawNPC(NPC.forge,'⚒️ Maître Ferron');
+  drawNPC(NPC.doctor,'🩺 Docteure Lina');
+  drawNPC(NPC.cook,'🍳 Chef Marin');
+  drawNPC(NPC.navigator,'🧭 Navigateur Nao');
+  drawMerchant(NPC.merchant);
+
   enemies.forEach(e=>{if(e.alive)drawEnemy(e,'Bandit')});
   if(boss.alive)drawBoss(boss);
   drawPlayer();
   ctx.restore();
 
-  // zone labels
+  ctx.setTransform(dpr*cameraZoom,0,0,dpr*cameraZoom,0,0);
   ctx.font='900 22px Georgia';ctx.textAlign='center';ctx.fillStyle='rgba(255,241,181,.9)';
-  ctx.fillText('PORT AZURE',Math.round(690-cam.x),Math.round(750-cam.y));
-  ctx.fillText('ROUTE DU FORT',Math.round(1550-cam.x),Math.round(650-cam.y));
+  ctx.fillText('PORT AZURE',(690-camera.x),(750-camera.y));
+  ctx.fillText('ROUTE DU FORT',(1550-camera.x),(650-camera.y));
 }
-function label(x,y,t){
-  ctx.font='bold 14px system-ui';ctx.textAlign='center';
-  ctx.fillStyle='rgba(5,15,24,.8)';ctx.fillText(t,x+1,y+1);
-  ctx.fillStyle='white';ctx.fillText(t,x,y);
-}
-function drawPlayer(){
-  const s=worldToScreen(p.x,p.y), bob=Math.sin(worldTime*7)*2;
-  ctx.save();ctx.translate(s.x,s.y+bob);
-  ctx.fillStyle='rgba(0,0,0,.2)';ctx.beginPath();ctx.ellipse(0,27,27,9,0,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#253d9a';ctx.beginPath();ctx.arc(0,0,23,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#f0c49d';ctx.beginPath();ctx.arc(0,-27,14,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#e04a45';ctx.fillRect(-19,-43,38,8);
-  if(p.aspiration==='Sabreur'||p.aspiration==='Forgeron'){ctx.strokeStyle='#eee';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(20,-3);ctx.lineTo(39,-25);ctx.stroke()}
-  if(p.aspiration==='Tireur d’élite'){ctx.fillStyle='#4d2b1e';ctx.fillRect(18,-5,22,7)}
-  label(0,53,p.name+' · '+p.aspiration);
-  if(p.attackFx>0){ctx.strokeStyle='rgba(255,240,150,'+p.attackFx+')';ctx.lineWidth=6;ctx.beginPath();ctx.arc(0,0,55,-1.1,1.1);ctx.stroke()}
-  ctx.restore();
-}
-function lockNPCPositions(){ solLockNPCs(); }
-function drawNPC(o,n){
-  const s=worldToScreen(o.x,o.y);
-  ellipse(s.x,s.y,27,27,'#e59b37');ellipse(s.x,s.y-26,14,14,'#f2c49d');
-  label(s.x,s.y+50,n);
-}
-function drawMerchant(o){
-  const s=worldToScreen(o.x,o.y);
-  ellipse(s.x,s.y,25,25,'#8e5fc0');ellipse(s.x,s.y-24,13,13,'#f2c49d');
-  label(s.x,s.y+47,'🪙 '+o.name);
-}
-function drawEnemy(o,n){
-  const s=worldToScreen(o.x,o.y);
-  ellipse(s.x,s.y,23,23,'#bb4654');ellipse(s.x,s.y-23,12,12,'#f2c49d');
-  barDraw(s.x-25,s.y-42,50,6,o.hp/o.maxhp);label(s.x,s.y+43,n);
-}
-function drawBoss(o){
-  const s=worldToScreen(o.x,o.y);
-  ellipse(s.x,s.y,45,45,'#673d9d');ellipse(s.x,s.y-43,19,19,'#f2c49d');
-  barDraw(s.x-60,s.y-72,120,9,o.hp/o.maxhp);label(s.x,s.y+68,'👑 Vargos');
-}
+
+/* =========================
+   COMBAT / INTERACTION
+   ========================= */
 function attack(){
   if(!game)return;
-  p.attackFx=1;
-  const b=bonus(), damage=30+b.damage+p.lvl*4;
-  const target=enemies.filter(e=>e.alive&&dist(p,e)<105)[0];
+  player.attackFx=1;
+  const b=bonus(),damage=30+b.damage+player.lvl*4;
+  const target=enemies.find(e=>e.alive&&dist(player,e)<105);
   if(target){
-    target.hp-=damage;log('⚔️ '+p.aspiration+' : '+damage+' dégâts !');
+    target.hp-=damage;log('⚔️ '+player.aspiration+' : '+damage+' dégâts !');
     if(target.hp<=0){
-      target.alive=false;p.kills++;p.bounty+=150;p.coins+=40;gainXP(45);
+      target.alive=false;player.kills++;player.bounty+=150;player.coins+=40;gainXP(45);
       log('💥 Bandit vaincu ! +45 XP • +40 🪙');
-      if(p.kills>=3)questDone=true;
+      if(player.kills>=3)questDone=true;
     }
-  }else if(boss.alive&&dist(p,boss)<125){
+  }else if(boss.alive&&dist(player,boss)<125){
     boss.hp-=damage;log('⚔️ Tu attaques Vargos : '+damage+' dégâts !');
-    if(boss.hp<=0){boss.alive=false;p.bounty+=5000;p.coins+=1000;gainXP(120);log('👑 Vargos vaincu ! +5000 prime');}
+    if(boss.hp<=0){boss.alive=false;player.bounty+=5000;player.coins+=1000;gainXP(120);log('👑 Vargos vaincu ! +5000 prime');}
   }else log('Aucun ennemi à portée.');
 }
 function interact(){
   if(!game)return;
-  if(dist(p,npc)<105){
+  if(dist(player,NPC.rovan)<105){
     if(!questStarted){questStarted=true;log('📜 Rovan : « Élimine trois bandits sur la route du fort ! »');}
-    else if(questDone){
-      p.coins+=500;p.bounty+=500;questDone=false;p.kills=0;
-      document.getElementById('questText').textContent='Explore le Fort Vargos.';
-      log('🎁 Rovan : +500 🪙 et +500 de prime !');
-    }else log('⚓ Rovan : « Les bandits sont toujours là. »');
+    else if(questDone){player.coins+=500;player.bounty+=500;questDone=false;player.kills=0;log('🎁 Rovan : +500 🪙 et +500 de prime !');}
+    else log('⚓ Rovan : « Les bandits sont toujours là. »');
     updateHUD();return;
   }
-  if(dist(p,merchant)<95){log('🪙 Milo : « Les vrais pirates investissent dans leur équipement ! »');return}
-  if(dist(p,forgeNpc)<95){log('⚒️ Maître Ferron : « Je forge ton équipement et j’améliore tes armes. »');return}
-  if(dist(p,doctorNpc)<95){p.hp=p.maxhp;log('🩺 Docteure Lina : soins complets !');updateHUD();return}
-  if(dist(p,cookNpc)<95){p.hp=Math.min(p.maxhp,p.hp+30);log('🍳 Chef Marin : repas préparé ! +30 PV');updateHUD();return}
-  if(dist(p,navigatorNpc)<95){log('🧭 Nao : « Le port te permettra bientôt de naviguer vers d’autres mers. »');return}
-  if(dist(p,dock)<130){log('🚢 Port Azure : ton prochain navire part vers la Mer d’Émeraude.');return}
-  if(dist(p,boss)<135&&boss.alive){log('👑 Vargos : « Reviens quand tu seras plus fort ! »');return}
+  if(dist(player,NPC.merchant)<95){log('🪙 Milo : « Les vrais pirates investissent dans leur équipement ! »');return}
+  if(dist(player,NPC.forge)<95){log('⚒️ Maître Ferron : « Je forge ton équipement et améliore tes armes. »');return}
+  if(dist(player,NPC.doctor)<95){player.hp=player.maxhp;log('🩺 Docteure Lina : soins complets !');updateHUD();return}
+  if(dist(player,NPC.cook)<95){player.hp=Math.min(player.maxhp,player.hp+30);log('🍳 Chef Marin : repas préparé ! +30 PV');updateHUD();return}
+  if(dist(player,NPC.navigator)<95){log('🧭 Nao : « Le port te permettra bientôt de naviguer vers d’autres mers. »');return}
   log('Rien à faire ici.');
 }
+
+/* =========================
+   BOUCLE : SEUL LE JOUEUR BOUGE
+   ========================= */
 function tick(t){
   if(!game)return;
   const dt=Math.min(.033,(t-last)/1000||0);last=t;worldTime+=dt;
+
   let dx=(keys.d||keys.arrowright?1:0)-(keys.q||keys.a||keys.arrowleft?1:0);
   let dy=(keys.s||keys.arrowdown?1:0)-(keys.z||keys.w||keys.arrowup?1:0);
+
   if(dx||dy){
-    const l=Math.hypot(dx,dy);p.x+=dx/l*(p.speed+bonus().speed)*dt;p.y+=dy/l*(p.speed+bonus().speed)*dt;
-    p.facing=dx<0?-1:1;
+    const l=Math.hypot(dx,dy);
+    player.x+=dx/l*(player.speed+bonus().speed)*dt;
+    player.y+=dy/l*(player.speed+bonus().speed)*dt;
+    player.facing=dx<0?-1:1;
   }
 
-  // PNJ fixes : leurs coordonnées sont des emplacements permanents dans le monde.
-  solLockNPCs();
-  p.x=clamp(p.x,100,2900);p.y=clamp(p.y,100,1800);
+  player.x=clamp(player.x,100,world.w-100);
+  player.y=clamp(player.y,100,world.h-100);
 
-  /* Caméra de jeu : le joueur se déplace réellement à l'écran.
-     Elle ne colle plus le joueur au centre, ce qui donnait l'impression
-     que les PNJ bougeaient quand ZQSD était pressé. */
-  /* CAMERA FIXÉE SUR LE PERSONNAGE — même après un zoom */
-  const viewW=innerWidth/cameraZoom, viewH=innerHeight/cameraZoom;
-  cam.x=clamp(p.x-viewW/2,0,Math.max(0,world.w-viewW));
-  cam.y=clamp(p.y-viewH/2,0,Math.max(0,world.h-viewH));
-  p.attackFx=Math.max(0,p.attackFx-dt*5);
-  if(boss.alive&&dist(p,boss)<280){
-    boss.cd-=dt;if(boss.cd<=0){boss.cd=1.2;p.hp-=8;log('💥 Vargos t’attaque !');if(p.hp<=0){p.hp=p.maxhp;p.x=760;p.y=980;log('☠️ Tu as été vaincu. Retour à Port Azure.');}}
+  /* AUCUNE ligne ici ne modifie les coordonnées des PNJ. */
+  updateCamera();
+
+  player.attackFx=Math.max(0,player.attackFx-dt*5);
+  if(boss.alive&&dist(player,boss)<280){
+    boss.cd-=dt;
+    if(boss.cd<=0){
+      boss.cd=1.2;player.hp-=8;log('💥 Vargos t’attaque !');
+      if(player.hp<=0){player.hp=player.maxhp;player.x=760;player.y=980;log('☠️ Tu as été vaincu. Retour à Port Azure.');}
+    }
   }
-  solLockNPCs(); updateHUD(); draw(); window.SOLtickFrame=requestAnimationFrame(tick);
+  updateHUD();draw();
+  requestAnimationFrame(tick);
 }
 
 const USER_KEY='sol_demo_user_v1';
@@ -1014,13 +1024,13 @@ function solLoadPosition(account){
   try{
     const saved=JSON.parse(localStorage.getItem(SOL_POS_PREFIX+solAccountId(account))||'null');
     if(saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)){
-      p.x=clamp(saved.x,120,2280);
-      p.y=clamp(saved.y,120,1380);
-      if(Number.isFinite(saved.hp))p.hp=clamp(saved.hp,1,p.maxhp);
-      if(Number.isFinite(saved.lvl))p.lvl=Math.max(1,saved.lvl);
-      if(Number.isFinite(saved.xp))p.xp=Math.max(0,saved.xp);
-      if(Number.isFinite(saved.bounty))p.bounty=Math.max(0,saved.bounty);
-      if(Number.isFinite(saved.kills))p.kills=Math.max(0,saved.kills);
+      player.x=clamp(saved.x,120,2280);
+      player.y=clamp(saved.y,120,1380);
+      if(Number.isFinite(saved.hp))player.hp=clamp(saved.hp,1,p.maxhp);
+      if(Number.isFinite(saved.lvl))player.lvl=Math.max(1,saved.lvl);
+      if(Number.isFinite(saved.xp))player.xp=Math.max(0,saved.xp);
+      if(Number.isFinite(saved.bounty))player.bounty=Math.max(0,saved.bounty);
+      if(Number.isFinite(saved.kills))player.kills=Math.max(0,saved.kills);
       return true;
     }
   }catch(e){}
@@ -1041,11 +1051,11 @@ function solSetCurrent(account){
 function solStartGame(account){
   if(!account)return;
   solSetCurrent(account);
-  p.name=account.name || (account.character && account.character.name) || 'Pirate';
+  player.name=account.name || (account.character && account.character.name) || 'Pirate';
   if(account.character && account.character.aspiration){
-    p.aspiration=account.character.aspiration;
+    player.aspiration=account.character.aspiration;
     const a=SOL_ASPIRATIONS[p.aspiration];
-    if(a && p.lvl===1 && p.hp===100){p.maxhp=a.pv;p.hp=a.pv;}
+    if(a && player.lvl===1 && player.hp===100){player.maxhp=a.pv;player.hp=a.pv;}
   }
   if(account.character){
     localStorage.setItem('sol_character',JSON.stringify(account.character));
@@ -1163,7 +1173,7 @@ window.SOL_directEnter=function(account){
       if(savedChar && !account.character) account.character=savedChar;
     }catch(e){}
 
-    p.name=account.name || (account.character&&account.character.name) || 'Pirate';
+    player.name=account.name || (account.character&&account.character.name) || 'Pirate';
 
     /* Restore saved position when available. */
     try{ if(typeof solLoadPosition==='function') solLoadPosition(account); }catch(e){}
