@@ -775,6 +775,89 @@ document.addEventListener('keydown',e=>{
 });
 
 
+const USER_KEY='sol_demo_user_v1';
+const ACCOUNTS_KEY='sol_demo_accounts_v1';
+
+async function hashPassword(value){
+  const data=new TextEncoder().encode(value);
+  const buf=await crypto.subtle.digest('SHA-256',data);
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function showAuthMsg(id,msg,ok=false){
+  const el=document.getElementById(id);
+  if(el){el.textContent=msg;el.style.color=ok?'#66e39a':'#ffd166';}
+}
+function getAccounts(){
+  let accounts=[];
+  try{accounts=JSON.parse(localStorage.getItem(ACCOUNTS_KEY)||'[]')}catch(e){accounts=[]}
+  if(!accounts.length){
+    try{accounts=JSON.parse(localStorage.getItem('sol_accounts')||'[]')}catch(e){accounts=[]}
+  }
+  return Array.isArray(accounts)?accounts:[];
+}
+function saveAccounts(a){
+  const clean=Array.isArray(a)?a.filter(Boolean).slice(0,5):[];
+  localStorage.setItem(ACCOUNTS_KEY,JSON.stringify(clean));
+  localStorage.setItem('sol_accounts',JSON.stringify(clean));
+}
+function rememberAccount(u){
+  if(!u || !u.email)return;
+  const existing=getAccounts().filter(x=>x.email!==u.email);
+  saveAccounts([{...u},...existing]);
+  renderRememberedAccounts();
+}
+
+function renderRememberedAccounts(){
+  const box=document.getElementById('rememberedAccounts');
+  const empty=document.getElementById('accountsEmpty');
+  if(!box)return;
+
+  const accounts=getAccounts();
+  box.innerHTML='';
+
+  if(!accounts.length){
+    if(empty)empty.style.display='block';
+    return;
+  }
+  if(empty)empty.style.display='none';
+
+  accounts.slice(0,5).forEach((account,index)=>{
+    const card=document.createElement('div');
+    card.className='saved-account';
+    card.dataset.accountIndex=String(index);
+    card.setAttribute('role','button');
+    card.setAttribute('tabindex','0');
+    card.innerHTML=
+      `<div class="saved-avatar">${(account.name||account.email||'P').charAt(0).toUpperCase()}</div>`+
+      `<div class="saved-info"><div class="saved-name">${account.name||'Pirate'}</div>`+
+      `<div class="saved-email">${account.email||''}</div></div>`+
+      `<button type="button" class="saved-delete" aria-label="Supprimer ce compte">✕</button>`;
+
+    const login=()=>{
+      const latest=getAccounts()[index];
+      if(latest && typeof window.SOL_loginRememberedAccount==='function'){
+        window.SOL_loginRememberedAccount(latest);
+      }
+    };
+    card.addEventListener('click',e=>{
+      if(e.target.closest('.saved-delete'))return;
+      e.preventDefault();
+      e.stopPropagation();
+      login();
+    });
+    card.addEventListener('keydown',e=>{
+      if(e.key==='Enter'||e.key===' '){e.preventDefault();login();}
+    });
+    card.querySelector('.saved-delete').addEventListener('click',e=>{
+      e.preventDefault();e.stopPropagation();
+      const updated=getAccounts().filter((_,i)=>i!==index);
+      saveAccounts(updated);
+      renderRememberedAccounts();
+    });
+    box.appendChild(card);
+  });
+}
+
 async function solLogin(){
   const email=document.getElementById('loginEmail').value.trim().toLowerCase();
   const pass=document.getElementById('loginPassword').value;
