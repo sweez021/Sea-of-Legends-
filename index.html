@@ -492,7 +492,7 @@ function renderRememberedAccounts(){
     const openAccount=()=>window.SOL_loginRememberedAccount(account);
     card.addEventListener('click',e=>{
       if(e.target.closest('.saved-delete'))return;
-      openAccount();
+      window.SOL_loginRememberedAccount(account);
     });
     card.addEventListener('keydown',e=>{
       if(e.key==='Enter'||e.key===' '){e.preventDefault();openAccount();}
@@ -630,34 +630,31 @@ document.getElementById('loginBtn').onclick=solLogin;
 
 window.SOL_loginRememberedAccount=function(account){
   if(!account)return;
-
-  /* Migrate the character saved by older prototype versions. */
-  if(!account.character){
-    try{
-      const oldChar=JSON.parse(localStorage.getItem('sol_character')||'null');
-      const current=JSON.parse(localStorage.getItem('sol_current_account')||'null');
-      if(oldChar && (!current || current.email===account.email)){
-        account.character=oldChar;
-      }
-    }catch(e){}
-  }
+  try{
+    const localChar=JSON.parse(localStorage.getItem('sol_character')||'null');
+    if(!account.character && localChar) account.character=localChar;
+  }catch(e){}
 
   localStorage.setItem('sol_current_account',JSON.stringify(account));
 
   const remember=document.getElementById('rememberModal');
-  if(remember)remember.classList.remove('open');
+  if(remember){
+    remember.classList.remove('open');
+    remember.setAttribute('aria-hidden','true');
+  }
 
-  /* Existing character = immediate game entry. */
   if(account.character && typeof solStartGame==='function'){
-    solStartGame(account);
-    return;
+    try{
+      solStartGame(account);
+      return;
+    }catch(err){
+      console.error('SOL remembered login:',err);
+    }
   }
 
-  /* No character yet = character creation. */
+  /* Seulement si aucun personnage n'existe encore. */
   localStorage.setItem('sol_pending_name',account.name||'');
-  if(window.SOLCharacter && typeof SOLCharacter.open==='function'){
-    SOLCharacter.open();
-  }
+  if(window.SOLCharacter && typeof SOLCharacter.open==='function') SOLCharacter.open();
 };
 
 renderRememberedAccounts();
@@ -828,6 +825,28 @@ document.addEventListener('click',function(e){
   const accounts=getAccounts();
   if(accounts[index])window.SOL_loginRememberedAccount(accounts[index]);
 });
+
+
+/* DIRECT ACCOUNT LOGIN FALLBACK */
+document.addEventListener('click',function(e){
+  const card=e.target.closest?.('#rememberedAccounts .saved-account');
+  if(!card || e.target.closest('.saved-delete'))return;
+  const accounts=getAccounts();
+  const cards=[...document.querySelectorAll('#rememberedAccounts .saved-account')];
+  const i=cards.indexOf(card);
+  if(i>=0 && accounts[i]) window.SOL_loginRememberedAccount(accounts[i]);
+});
+
+
+/* Make sure the actual game layer is visible after remembered login. */
+const _SOL_realStartGame = window.solStartGame;
+window.solStartGame = function(account){
+  const result=_SOL_realStartGame ? _SOL_realStartGame(account) : null;
+  document.getElementById('game')?.classList.add('active');
+  document.getElementById('gameScreen')?.classList.add('active');
+  document.getElementById('start')?.style && (document.getElementById('start').style.display='none');
+  return result;
+};
 
 </script>
 </body>
