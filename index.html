@@ -640,12 +640,21 @@ document.getElementById('loginBtn').onclick=solLogin;
 
 window.SOL_loginRememberedAccount=function(account){
   if(!account)return;
+
   try{
-    const localChar=JSON.parse(localStorage.getItem('sol_character')||'null');
-    if(!account.character && localChar) account.character=localChar;
+    const savedChar=JSON.parse(localStorage.getItem('sol_character')||'null');
+    if(savedChar) account.character=savedChar;
   }catch(e){}
 
-  localStorage.setItem('sol_current_account',JSON.stringify(account));
+  /* Persist the enriched account so the next logout also works. */
+  try{
+    let accounts=getAccounts();
+    accounts=[account,...accounts.filter(a=>a.email!==account.email)].slice(0,5);
+    saveAccounts(accounts);
+    localStorage.setItem('sol_accounts',JSON.stringify(accounts));
+  }catch(e){}
+
+  solSetCurrent(account);
 
   const remember=document.getElementById('rememberModal');
   if(remember){
@@ -653,18 +662,24 @@ window.SOL_loginRememberedAccount=function(account){
     remember.setAttribute('aria-hidden','true');
   }
 
-  if(account.character && typeof solStartGame==='function'){
-    try{
-      solStartGame(account);
-      return;
-    }catch(err){
-      console.error('SOL remembered login:',err);
-    }
+  if(typeof solStartGame==='function'){
+    solStartGame(account);
+    return;
   }
 
-  /* Seulement si aucun personnage n'existe encore. */
-  localStorage.setItem('sol_pending_name',account.name||'');
-  if(window.SOLCharacter && typeof SOLCharacter.open==='function') SOLCharacter.open();
+  /* Fallback: start the canvas directly if an old function is missing. */
+  game=true;
+  const start=document.getElementById('start');
+  if(start){
+    start.style.display='none';
+    start.style.visibility='hidden';
+    start.style.pointerEvents='none';
+  }
+  c.style.display='block';
+  updateHUD();
+  draw();
+  last=performance.now();
+  window.SOLtickFrame=requestAnimationFrame(tick);
 };
 
 renderRememberedAccounts();
@@ -770,15 +785,41 @@ function solStartGame(account){
   window.SOLtickFrame=requestAnimationFrame(tick);
 }
 function solDisconnect(){
-  const account=JSON.parse(localStorage.getItem(SOL_SESSION_KEY)||'null');
-  solSavePosition(account);
+  let account=null;
+  try{account=JSON.parse(localStorage.getItem(SOL_SESSION_KEY)||'null')}catch(e){}
+  if(!account) account={name:p.name||'Pirate'};
+
+  /* Keep the character on the remembered account. */
+  try{
+    const savedChar=JSON.parse(localStorage.getItem('sol_character')||'null');
+    if(savedChar) account.character=savedChar;
+  }catch(e){}
+
+  /* Save exact position BEFORE ending the session. */
+  try{solSavePosition(account)}catch(e){}
+
+  /* Update the persistent remembered-account list. */
+  try{
+    let accounts=getAccounts();
+    const index=accounts.findIndex(a=>a.email===account.email);
+    if(index>=0) accounts[index]={...accounts[index],...account};
+    else accounts.unshift(account);
+    saveAccounts(accounts);
+    localStorage.setItem('sol_accounts',JSON.stringify(accounts.slice(0,5)));
+  }catch(e){}
+
   game=false;
   localStorage.removeItem(SOL_SESSION_KEY);
+
   const start=document.getElementById('start');
-  if(start)start.style.display='flex';
-  document.querySelectorAll('.auth-modal.open').forEach(m=>m.classList.remove('open'));
+  if(start){
+    start.style.display='flex';
+    start.style.visibility='visible';
+    start.style.pointerEvents='auto';
+  }
+  document.querySelectorAll('.auth-modal.open,.game-modal.open').forEach(m=>m.classList.remove('open'));
   renderRememberedAccounts();
-  log('Position sauvegardée. À bientôt, pirate !');
+  log('Déconnexion réussie. Ta position est sauvegardée.');
 }
 window.addEventListener('beforeunload',()=>{
   const account=JSON.parse(localStorage.getItem(SOL_SESSION_KEY)||'null');
@@ -943,24 +984,8 @@ document.addEventListener('click',function(e){
   if(!btn)return;
   btn.onclick=function(e){
     e.preventDefault();
-    e.stopPropagation();
-    try{
-      const account=JSON.parse(localStorage.getItem('sol_current_account')||'null');
-      if(account && typeof solSavePosition==='function') solSavePosition(account);
-    }catch(err){console.warn(err)}
-    try{
-      if(typeof game!=='undefined') game=false;
-      localStorage.removeItem('sol_current_account');
-    }catch(err){}
-    const start=document.getElementById('start');
-    if(start){
-      start.style.display='flex';
-      start.style.visibility='visible';
-      start.style.pointerEvents='auto';
-    }
-    document.querySelectorAll('.auth-modal.open').forEach(m=>m.classList.remove('open'));
-    if(typeof renderRememberedAccounts==='function')renderRememberedAccounts();
-    if(typeof log==='function')log('Déconnexion réussie. Ta position a été sauvegardée.');
+    e.stopImmediatePropagation();
+    solDisconnect();
   };
 })();
 </script>
