@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sea of Legends — Menu animé</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#03111d}
+.scene{position:relative;width:100%;height:100%;overflow:hidden;background:#03111d}
+.art{
+ position:absolute;inset:-3%;
+ background:url("sea_of_legends_menu.png") center/cover no-repeat;
+ transform:scale(1.03);
+ animation:camera 18s ease-in-out infinite alternate;
+}
+.shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,8,18,.04),rgba(0,8,18,.16) 55%,rgba(0,7,15,.42))}
+.ocean{
+ position:absolute;left:-10%;right:-10%;bottom:-4%;height:44%;
+ opacity:.48;mix-blend-mode:screen;pointer-events:none;
+ background:
+   repeating-linear-gradient(174deg,transparent 0 17px,rgba(255,255,255,.13) 18px 20px,transparent 21px 38px),
+   repeating-linear-gradient(6deg,transparent 0 27px,rgba(44,190,255,.11) 28px 31px,transparent 32px 55px);
+ background-size:520px 150px,700px 190px;
+ animation:waves 7s linear infinite;
+ transform:perspective(500px) rotateX(10deg) scale(1.18);
+}
+.wave2{
+ position:absolute;left:-20%;right:-20%;bottom:1%;height:25%;
+ opacity:.28;pointer-events:none;
+ background:repeating-radial-gradient(ellipse at 50% 100%,transparent 0 18px,rgba(255,255,255,.16) 19px 21px,transparent 22px 44px);
+ background-size:720px 170px;
+ animation:waves2 11s linear infinite;
+ transform:perspective(500px) rotateX(10deg) scale(1.2);
+}
+.glint{
+ position:absolute;left:-20%;width:35%;height:18%;bottom:12%;
+ background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent);
+ filter:blur(12px);transform:rotate(-8deg);opacity:.45;
+ animation:glint 9s ease-in-out infinite;
+ pointer-events:none;
+}
+.particle{
+ position:absolute;width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.65);
+ box-shadow:0 0 8px rgba(255,255,255,.55);opacity:.0;animation:float 6s ease-in-out infinite;
+}
+.p1{left:18%;top:44%;animation-delay:1s}.p2{left:62%;top:50%;animation-delay:3s}
+.p3{left:78%;top:38%;animation-delay:4.5s}.p4{left:43%;top:62%;animation-delay:2s}
+@keyframes camera{0%{transform:scale(1.03) translate3d(-.4%,0,0)}100%{transform:scale(1.09) translate3d(.5%,-.5%,0)}}
+@keyframes waves{0%{background-position:0 0,0 0}50%{background-position:260px 8px,-350px 5px}100%{background-position:520px 0,-700px 0}}
+@keyframes waves2{0%{background-position:0 0}50%{background-position:360px 8px}100%{background-position:720px 0}}
+@keyframes glint{0%,100%{transform:translateX(-20%) rotate(-8deg);opacity:0}35%{opacity:.45}65%{transform:translateX(330%) rotate(-8deg);opacity:.18}75%{opacity:0}}
+@keyframes float{0%,100%{transform:translateY(10px) scale(.5);opacity:0}30%{opacity:.7}70%{transform:translateY(-34px) scale(1);opacity:.25}}
+@media(prefers-reduced-motion:reduce){
+ .art,.ocean,.wave2,.glint,.particle{animation:none}
+}
+</style>
+</head>
+<body>
+<div class="scene" aria-label="Menu animé Sea of Legends">
+  <div class="art"></div>
+  <div class="shade"></div>
+  <div class="ocean"></div>
+  <div class="wave2"></div>
+  <div class="glint"></div>
+  <div class="particle p1"></div><div class="particle p2"></div>
+  <div class="particle p3"></div><div class="particle p4"></div>
+</div>
+</body>
+</html>
