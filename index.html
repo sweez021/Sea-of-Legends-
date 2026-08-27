@@ -433,13 +433,21 @@ window.addEventListener('blur',()=>Object.keys(keys).forEach(k=>keys[k]=false));
 let game=false,last=0,cam={x:0,y:0},worldTime=0;
 let cameraZoom=1;
 
-const world={w:3000,h:1900};
+const world={w:3600,h:2400};
+/* ÎLE DE L'AUBE — inspiration village côtier d'aventure, sans reprendre
+   directement une carte ou des éléments graphiques de One Piece. */
+const START_ISLAND={
+  name:"ÎLE DE L'AUBE",
+  spawn:{x:1800,y:1500},
+  village:{x:1800,y:1150},
+  port:{x:1800,y:1900}
+};
 /* Déplacement type Pokémon : la map est une grille, les PNJ sont fixes. */
 const TILE=48;
 const MOVE_TIME=150; // ms par case
 let moveBusy=false;
 
-const p={x:768,y:984,r:23,speed:245,hp:100,maxhp:100,lvl:1,xp:0,bounty:0,kills:0,name:'Pirate',aspiration:'Combattant',facing:1,attackFx:0,coins:250};
+const p={x:1800,y:1700,r:23,speed:245,hp:100,maxhp:100,lvl:1,xp:0,bounty:0,kills:0,name:'Pirate',aspiration:'Combattant',facing:1,attackFx:0,coins:250};
 const npc=Object.freeze({x:930,y:850,r:27,name:'Capitaine Rovan'});
 const forgeNpc=Object.freeze({x:1120,y:690,r:25,name:'Maître Ferron'});
 const doctorNpc=Object.freeze({x:720,y:690,r:25,name:'Docteure Lina'});
@@ -511,118 +519,148 @@ function drawHouse(x,y,w,h,name){
   label(x+w/2,y+h+25,name);
 }
 function draw(){
-  ctx.clearRect(0,0,innerWidth,innerHeight);
-  const t=worldTime;
-  // Animated ocean
-  ctx.fillStyle='#3c9fca';ctx.fillRect(0,0,innerWidth,innerHeight);
-  ctx.save();ctx.translate(-cam.x,-cam.y);
-  ctx.globalAlpha=.25;ctx.strokeStyle='#d8f6ff';ctx.lineWidth=3;
-  for(let y=40;y<world.h;y+=58){
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#258bb8';ctx.fillRect(0,0,W,H);
+
+  ctx.save();
+  ctx.translate(-camera.x*cameraZoom,-camera.y*cameraZoom);
+  ctx.scale(cameraZoom,cameraZoom);
+
+  /* ===== MER ===== */
+  ctx.fillStyle='#258bb8';ctx.fillRect(0,0,world.w,world.h);
+  ctx.globalAlpha=.32;ctx.strokeStyle='#bcefff';ctx.lineWidth=3;
+  for(let y=25;y<world.h;y+=55){
     ctx.beginPath();
-    for(let x=0;x<world.w;x+=55){
-      const yy=y+Math.sin(x*.018+t*1.7+y*.01)*5;
+    for(let x=0;x<world.w;x+=48){
+      const yy=y+Math.sin(x*.017+worldTime*1.6+y*.013)*5;
       if(x===0)ctx.moveTo(x,yy);else ctx.lineTo(x,yy);
     }
     ctx.stroke();
   }
   ctx.globalAlpha=1;
 
-  // Main island + beach
-  ellipse(1500,970,1320,820,'#77bd67','#e7cf87',65);
-  // small islands
-  ellipse(360,420,170,105,'#72b95f','#e7cf87',32);
-  ellipse(2600,1450,220,130,'#72b95f','#e7cf87',32);
+  /* ===== ÎLE : grande forme organique ===== */
+  ctx.fillStyle='#e7c778';
+  ctx.beginPath();
+  ctx.ellipse(1800,1250,1500,980,0,0,Math.PI*2);ctx.fill();
 
-  // paths
-  ctx.strokeStyle='#c9a16a';ctx.lineWidth=42;ctx.lineCap='round';
-  ctx.beginPath();ctx.moveTo(760,980);ctx.lineTo(930,850);ctx.lineTo(1370,980);ctx.lineTo(1850,760);ctx.lineTo(2390,620);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(930,850);ctx.lineTo(650,930);ctx.lineTo(360,1120);ctx.stroke();
+  ctx.fillStyle='#72bd65';
+  ctx.beginPath();
+  ctx.ellipse(1800,1225,1435,915,0,0,Math.PI*2);ctx.fill();
 
-  // Port Azure
-  ctx.fillStyle='#d5ad6b';ctx.fillRect(390,760,600,300);
-  drawHouse(430,785,155,185,'Auberge');
-  drawHouse(620,785,155,185,'Marché');
-  drawHouse(810,785,155,185,'Taverne');
-  drawHouse(1010,785,180,185,'Forge');
-  drawHouse(560,575,155,150,'Infirmerie');
-  drawHouse(760,575,155,150,'Cuisine');
-  // pier + ship
-  ctx.fillStyle='#704727';ctx.fillRect(270,1080,480,38);ctx.fillRect(350,1118,330,28);
-  ctx.fillStyle='#7e3e2c';ctx.beginPath();ctx.moveTo(390,1146);ctx.lineTo(650,1146);ctx.lineTo(600,1220);ctx.lineTo(440,1220);ctx.closePath();ctx.fill();
-  ctx.fillStyle='#f0e4c2';ctx.beginPath();ctx.moveTo(510,1146);ctx.lineTo(510,980);ctx.lineTo(625,1146);ctx.closePath();ctx.fill();
-  ctx.fillStyle='#5d321e';ctx.fillRect(505,985,10,165);
+  /* Petites baies */
+  ctx.fillStyle='#e7c778';
+  ctx.beginPath();ctx.ellipse(620,1650,430,250,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(3000,1550,380,230,0,0,Math.PI*2);ctx.fill();
 
-  // Fort Vargos
-  ctx.fillStyle='#777f88';ctx.fillRect(2250,430,310,260);
-  for(let i=0;i<5;i++)ctx.fillRect(2240+i*65,395,48,50);
-  ctx.fillStyle='#4e5861';ctx.fillRect(2365,575,80,115);
-  label(2405,720,'FORT VARGOS');
+  /* ===== ROUTES ===== */
+  ctx.strokeStyle='#d1a66b';ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.lineWidth=70;
+  ctx.beginPath();
+  ctx.moveTo(1800,1900);ctx.lineTo(1800,1550);ctx.lineTo(1800,1150);
+  ctx.lineTo(1350,850);ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(1800,1150);ctx.lineTo(2250,850);ctx.lineTo(2600,600);ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(1800,1150);ctx.lineTo(2250,1250);ctx.lineTo(2700,1450);ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(1800,1250);ctx.lineTo(1250,1350);ctx.lineTo(850,1600);ctx.stroke();
 
-  // trees
-  for(let i=0;i<45;i++){
-    const x=120+(i*211)%2700,y=180+(i*137)%1450;
-    if(x>350&&x<1030&&y>730&&y<1080)continue;
-    if(x>2180&&y>360&&y<760)continue;
+  /* ===== FORÊT / ARBRES ===== */
+  for(let i=0;i<75;i++){
+    const x=260+(i*317)%3000;
+    const y=220+(i*193)%1850;
+    if(Math.hypot(x-1800,y-1150)<430)continue;
+    if(y>1780 && x>1400 && x<2200)continue;
     drawTree(x,y);
   }
 
-  // flowers / rocks
-  for(let i=0;i<70;i++){
-    const x=90+(i*97)%2820,y=120+(i*181)%1650;
-    if(i%3===0){ctx.fillStyle='#e6d68b';ctx.fillRect(x,y,5,5)}
-    else {ctx.fillStyle='#6e7f73';ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fill()}
+  /* ===== VILLAGE CENTRAL ===== */
+  function islandHouse(x,y,w,h,name,roof='#b54b3e'){
+    ctx.fillStyle='#d9a55e';ctx.fillRect(x,y,w,h);
+    ctx.fillStyle='#f3dfaa';ctx.fillRect(x+12,y+28,w-24,h-28);
+    ctx.fillStyle=roof;ctx.beginPath();
+    ctx.moveTo(x-12,y+30);ctx.lineTo(x+w/2,y-48);ctx.lineTo(x+w+12,y+30);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle='#68432a';ctx.fillRect(x+w/2-24,y+h-70,48,70);
+    ctx.fillStyle='#8fc8d5';ctx.fillRect(x+28,y+55,34,34);
+    ctx.fillRect(x+w-62,y+55,34,34);
+    label(x+w/2,y+h+24,name);
   }
 
-  // entities
+  islandHouse(1450,980,180,150,'Maison');
+  islandHouse(1690,930,220,180,'Auberge','#a94a35');
+  islandHouse(1960,980,180,150,'Maison');
+  islandHouse(1480,1190,190,155,'Maison');
+  islandHouse(1940,1190,190,155,'Maison');
+
+  /* Place centrale */
+  ctx.fillStyle='#d9b77b';ctx.beginPath();ctx.arc(1800,1150,145,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#805531';ctx.fillRect(1770,1075,60,150);
+  ctx.fillStyle='#caa05b';ctx.beginPath();ctx.moveTo(1735,1080);ctx.lineTo(1800,1010);
+  ctx.lineTo(1865,1080);ctx.closePath();ctx.fill();
+  label(1800,1305,'PLACE DU VILLAGE');
+
+  /* ===== TAVERNE ===== */
+  ctx.fillStyle='#8a5a34';ctx.fillRect(2170,1020,300,210);
+  ctx.fillStyle='#c56c45';ctx.beginPath();ctx.moveTo(2145,1025);ctx.lineTo(2320,900);
+  ctx.lineTo(2495,1025);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#f2d79b';ctx.fillRect(2285,1100,70,130);
+  label(2320,1265,'TAVERNE DU PORT');
+
+  /* ===== PORT / QUAI ===== */
+  ctx.fillStyle='#704827';
+  for(let i=0;i<8;i++)ctx.fillRect(1560+i*70,1870,58,360);
+  ctx.fillRect(1480,1870,650,48);
+  ctx.fillStyle='#8a5b36';ctx.fillRect(1540,1940,560,38);
+  /* petit bateau neutre */
+  ctx.fillStyle='#7d3f2a';ctx.beginPath();
+  ctx.moveTo(1600,2070);ctx.lineTo(2050,2070);ctx.lineTo(1960,2190);
+  ctx.lineTo(1690,2190);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#f0e2bd';ctx.fillRect(1810,1930,14,180);
+  ctx.beginPath();ctx.moveTo(1824,1940);ctx.lineTo(1824,2070);ctx.lineTo(1960,2070);ctx.closePath();ctx.fill();
+  label(1810,2270,'PORT DE L’AUBE');
+
+  /* ===== PLAGE ===== */
+  ctx.fillStyle='#f1d58e';ctx.beginPath();
+  ctx.ellipse(600,1730,360,150,0,0,Math.PI*2);ctx.fill();
+  ctx.ellipse(3000,1700,330,140,0,0,Math.PI*2);ctx.fill();
+
+  /* ===== FALAISES ===== */
+  for(let i=0;i<8;i++){
+    const x=650+i*150,y=460+(i%2)*25;
+    ctx.fillStyle='#777d74';ctx.fillRect(x,y,95,170);
+    ctx.fillStyle='#9b9b88';ctx.beginPath();
+    ctx.moveTo(x,y);ctx.lineTo(x+48,y-55);ctx.lineTo(x+95,y);ctx.closePath();ctx.fill();
+  }
+
+  /* ===== PANNEAUX / POINTS D'INTÉRÊT ===== */
+  function sign(x,y,text){
+    ctx.fillStyle='#704726';ctx.fillRect(x-7,y,14,70);
+    ctx.fillStyle='#c99655';ctx.fillRect(x-90,y-25,180,48);
+    ctx.strokeStyle='#5b3823';ctx.lineWidth=4;ctx.strokeRect(x-90,y-25,180,48);
+    label(x,y+7,text);
+  }
+  sign(1800,1700,'PORT');
+  sign(1260,1050,'VILLAGE');
+  sign(2550,690,'FORÊT');
+  sign(820,1530,'PLAGE');
+
+  /* ===== ENNEMIS ===== */
   enemies.forEach(e=>{if(e.alive)drawEnemy(e,'Bandit')});
   if(boss.alive)drawBoss(boss);
+
+  /* ===== JOUEUR ===== */
   drawPlayer();
   ctx.restore();
 
-  // zone labels
-  ctx.font='900 22px Georgia';ctx.textAlign='center';ctx.fillStyle='rgba(255,241,181,.9)';
-  ctx.fillText('PORT AZURE',Math.round(690-cam.x),Math.round(750-cam.y));
-  ctx.fillText('ROUTE DU FORT',Math.round(1550-cam.x),Math.round(650-cam.y));
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.font='900 24px Georgia';ctx.textAlign='center';
+  ctx.fillStyle='rgba(255,241,181,.95)';
+  ctx.fillText("ÎLE DE L'AUBE",W/2,38);
 }
-function label(x,y,t){
-  ctx.font='bold 14px system-ui';ctx.textAlign='center';
-  ctx.fillStyle='rgba(5,15,24,.8)';ctx.fillText(t,x+1,y+1);
-  ctx.fillStyle='white';ctx.fillText(t,x,y);
-}
-function drawPlayer(){
-  const s=worldToScreen(p.x,p.y), bob=Math.sin(worldTime*7)*2;
-  ctx.save();ctx.translate(s.x,s.y+bob);
-  ctx.fillStyle='rgba(0,0,0,.2)';ctx.beginPath();ctx.ellipse(0,27,27,9,0,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#253d9a';ctx.beginPath();ctx.arc(0,0,23,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#f0c49d';ctx.beginPath();ctx.arc(0,-27,14,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#e04a45';ctx.fillRect(-19,-43,38,8);
-  if(p.aspiration==='Sabreur'||p.aspiration==='Forgeron'){ctx.strokeStyle='#eee';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(20,-3);ctx.lineTo(39,-25);ctx.stroke()}
-  if(p.aspiration==='Tireur d’élite'){ctx.fillStyle='#4d2b1e';ctx.fillRect(18,-5,22,7)}
-  label(0,53,p.name+' · '+p.aspiration);
-  if(p.attackFx>0){ctx.strokeStyle='rgba(255,240,150,'+p.attackFx+')';ctx.lineWidth=6;ctx.beginPath();ctx.arc(0,0,55,-1.1,1.1);ctx.stroke()}
-  ctx.restore();
-}
-function lockNPCPositions(){  }
-function drawNPC(o,n){
-  const s=worldToScreen(o.x,o.y);
-  ellipse(s.x,s.y,27,27,'#e59b37');ellipse(s.x,s.y-26,14,14,'#f2c49d');
-  label(s.x,s.y+50,n);
-}
-function drawMerchant(o){
-  const s=worldToScreen(o.x,o.y);
-  ellipse(s.x,s.y,25,25,'#8e5fc0');ellipse(s.x,s.y-24,13,13,'#f2c49d');
-  label(s.x,s.y+47,'🪙 '+o.name);
-}
-function drawEnemy(o,n){
-  const s=worldToScreen(o.x,o.y);
-  ellipse(s.x,s.y,23,23,'#bb4654');ellipse(s.x,s.y-23,12,12,'#f2c49d');
-  barDraw(s.x-25,s.y-42,50,6,o.hp/o.maxhp);label(s.x,s.y+43,n);
-}
-function drawBoss(o){
-  const s=worldToScreen(o.x,o.y);
-  ellipse(s.x,s.y,45,45,'#673d9d');ellipse(s.x,s.y-43,19,19,'#f2c49d');
-  barDraw(s.x-60,s.y-72,120,9,o.hp/o.maxhp);label(s.x,s.y+68,'👑 Vargos');
-}
+
 function attack(){
   if(!game)return;
   p.attackFx=1;
@@ -642,7 +680,7 @@ function attack(){
 }
 function interact(){
   if(!game)return;
-  log('Rien à faire ici.');
+  log("🌴 Explore l'île et découvre ses secrets.");
 }
 
 
