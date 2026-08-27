@@ -178,11 +178,11 @@ let band=new T.Mesh(new T.CylinderGeometry(5.3,5.3,.7,20),mat(0x482619));band.po
 let l1=box(2.4,6,2.4,M.blue,-1.7,2,0),l2=l1.clone();l2.position.x=1.7;player.add(l2);island.remove(l1);
 
 const state={step:0,coins:0,exp:0};
+const keys={};
 function blocked(x,z){
  if(Math.hypot(x,z)>188)return true;
  return houses.some(b=>Math.abs(x-b.x)<b.w/2+4&&Math.abs(z-b.z)<b.d/2+4);
 }
-const keys={};
 addEventListener("keydown",e=>{
  keys[e.key.toLowerCase()]=true;
  if(e.key==="Escape")$("menu").style.display=$("menu").style.display==="flex"?"none":"flex";
