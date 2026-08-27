@@ -804,26 +804,21 @@ function solDisconnect(){
     if(character)account.character=character;
   }catch(e){}
 
+  /* Save the exact position before ending the session. */
   try{solSavePosition(account)}catch(e){}
 
-  /* IMPORTANT: keep the account in remembered accounts. */
-  saveAccounts([account,...getAccounts().filter(a=>a.email!==account.email)]);
+  /* Keep account + character permanently in the remembered list. */
+  try{
+    saveAccounts([account,...getAccounts().filter(a=>a.email!==account.email)]);
+    localStorage.setItem('sol_current_account',JSON.stringify(account));
+  }catch(e){}
 
-  game=false;
+  /* Only the active session is removed. */
   localStorage.removeItem(SOL_SESSION_KEY);
 
-  const start=document.getElementById('start');
-  if(start){
-    start.style.display='flex';
-    start.style.visibility='visible';
-    start.style.pointerEvents='auto';
-  }
-  document.querySelectorAll('.game-modal.open').forEach(m=>{
-    m.classList.remove('open');
-    m.setAttribute('aria-hidden','true');
-  });
-  renderRememberedAccounts();
-  log('Déconnexion réussie. Compte et position sauvegardés.');
+  /* Reload is intentional: it resets the game state and all click handlers.
+     The remembered account and character stay in localStorage. */
+  window.location.reload();
 }
 window.addEventListener('beforeunload',()=>{
   const account=JSON.parse(localStorage.getItem(SOL_SESSION_KEY)||'null');
