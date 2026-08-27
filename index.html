@@ -253,7 +253,7 @@ html,body{width:100%;height:100%;overflow:hidden!important} body{margin:0}\n
     <div>XP <span id="xpText">0/100</span></div><div class="bar"><div id="xpFill" class="fill xp" style="width:0%"></div></div>
   </div>
   <div id="quest" class="panel"><h3>📜 Première mission</h3><div id="questText">Va parler au capitaine Rovan, puis élimine 3 bandits.</div><div style="margin-top:7px">Bandits : <b id="kills">0/3</b></div></div>
-  <div id="controls" class="panel">ZQSD / WASD ou flèches · E : interagir · ESPACE : attaquer · ZQSD pour le personnage · la carte suit le personnage · clic gauche maintenu pour déplacer la caméra · molette pour zoomer/dézoomer · R recentre la caméra · les PNJ restent à leur poste</div>
+  <div id="controls" class="panel">ZQSD / WASD ou flèches · E : interagir · ESPACE : attaquer · ZQSD pour le personnage · la caméra reste fixée sur ton personnage · molette pour zoomer/dézoomer · les PNJ restent à leur poste</div>
   <div id="log" class="panel">Bienvenue à Port Azure.</div>
   <div id="actions"><button id="attack">⚔️ Attaquer</button><button id="interact" class="secondary">💬 Interagir</button></div><button id="logoutGame" class="logout-game" type="button">🚪 Déconnexion</button>
   <div id="mobile"><div class="dpad"><span></span><button data-k="up">▲</button><span></span><button data-k="left">◀</button><button data-k="down">▼</button><button data-k="right">▶</button></div></div>
@@ -409,25 +409,7 @@ addEventListener('wheel',e=>{
   draw();
 },{passive:false});
 
-c.addEventListener('pointerdown',e=>{
-  if(!game || e.button!==0)return;
-  cameraDrag=true;
-  c.setPointerCapture(e.pointerId);
-  dragX=e.clientX; dragY=e.clientY;
-  dragCamX=cam.x; dragCamY=cam.y;
-});
-c.addEventListener('pointermove',e=>{
-  if(!cameraDrag)return;
-  cam.x=clamp(dragCamX-(e.clientX-dragX)/cameraZoom,0,Math.max(0,world.w-innerWidth/cameraZoom));
-  cam.y=clamp(dragCamY-(e.clientY-dragY)/cameraZoom,0,Math.max(0,world.h-innerHeight/cameraZoom));
-  /* Camera only: PNJ coordinates are untouched. */
-  draw();
-});
-c.addEventListener('pointerup',e=>{
-  cameraDrag=false;
-  try{c.releasePointerCapture(e.pointerId)}catch(_){}
-});
-c.addEventListener('pointercancel',()=>cameraDrag=false);
+
 
 const keys={z:false,q:false,s:false,d:false,w:false,a:false,
   arrowup:false,arrowdown:false,arrowleft:false,arrowright:false};
@@ -453,7 +435,7 @@ window.addEventListener('blur',()=>Object.keys(keys).forEach(k=>keys[k]=false));
 
 let game=false,last=0,cam={x:0,y:0},worldTime=0;
 let cameraZoom=1;
-let cameraDrag=false,dragX=0,dragY=0,dragCamX=0,dragCamY=0;
+
 const world={w:3000,h:1900};
 const p={x:760,y:980,r:23,speed:245,hp:100,maxhp:100,lvl:1,xp:0,bounty:0,kills:0,name:'Pirate',aspiration:'Combattant',facing:1,attackFx:0,coins:250};
 const npc={x:930,y:850,r:27,name:'Capitaine Rovan',homeX:930,homeY:850};
@@ -703,7 +685,7 @@ function tick(t){
   const dt=Math.min(.033,(t-last)/1000||0);last=t;worldTime+=dt;
   let dx=(keys.d||keys.arrowright?1:0)-(keys.q||keys.a||keys.arrowleft?1:0);
   let dy=(keys.s||keys.arrowdown?1:0)-(keys.z||keys.w||keys.arrowup?1:0);
-  if(dx||dy && !cameraDrag){
+  if(dx||dy){
     const l=Math.hypot(dx,dy);p.x+=dx/l*(p.speed+bonus().speed)*dt;p.y+=dy/l*(p.speed+bonus().speed)*dt;
     p.facing=dx<0?-1:1;
   }
@@ -715,19 +697,10 @@ function tick(t){
   /* Caméra de jeu : le joueur se déplace réellement à l'écran.
      Elle ne colle plus le joueur au centre, ce qui donnait l'impression
      que les PNJ bougeaient quand ZQSD était pressé. */
-  if(!cameraDrag){
-    const viewW=innerWidth/cameraZoom, viewH=innerHeight/cameraZoom;
-    /* La carte accompagne le personnage : le joueur reste au centre
-       autant que possible et tout le monde autour défile avec lui. */
-    const targetX=p.x-viewW/2;
-    const targetY=p.y-viewH/2;
-    cam.x += (targetX-cam.x)*Math.min(1,dt*8);
-    cam.y += (targetY-cam.y)*Math.min(1,dt*8);
-    cam.x=clamp(cam.x,0,Math.max(0,world.w-viewW));
-    cam.y=clamp(cam.y,0,Math.max(0,world.h-viewH));
-  }
-  cam.x=clamp(cam.x,0,Math.max(0,world.w-innerWidth/cameraZoom));
-  cam.y=clamp(cam.y,0,Math.max(0,world.h-innerHeight/cameraZoom));
+  /* CAMERA FIXÉE SUR LE PERSONNAGE */
+  const viewW=innerWidth/cameraZoom, viewH=innerHeight/cameraZoom;
+  cam.x=clamp(p.x-viewW/2,0,Math.max(0,world.w-viewW));
+  cam.y=clamp(p.y-viewH/2,0,Math.max(0,world.h-viewH));
   p.attackFx=Math.max(0,p.attackFx-dt*5);
   if(boss.alive&&dist(p,boss)<280){
     boss.cd-=dt;if(boss.cd<=0){boss.cd=1.2;p.hp-=8;log('💥 Vargos t’attaque !');if(p.hp<=0){p.hp=p.maxhp;p.x=760;p.y=980;log('☠️ Tu as été vaincu. Retour à Port Azure.');}}
