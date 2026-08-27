@@ -462,26 +462,46 @@ function renderRememberedAccounts(){
   const box=document.getElementById('rememberedAccounts');
   const empty=document.getElementById('accountsEmpty');
   if(!box)return;
-  const accounts=getAccounts();
+
+  let accounts=[];
+  try{accounts=JSON.parse(localStorage.getItem(ACCOUNTS_KEY)||'[]')}catch(e){accounts=[]}
+
+  /* Also support accounts created by the previous prototype key. */
+  if(!accounts.length){
+    try{accounts=JSON.parse(localStorage.getItem('sol_accounts')||'[]')}catch(e){accounts=[]}
+  }
+
   box.innerHTML='';
-  if(!accounts.length){if(empty)empty.style.display='block';return;}
+  if(!accounts.length){
+    if(empty)empty.style.display='block';
+    return;
+  }
   if(empty)empty.style.display='none';
-  accounts.forEach((account,i)=>{
+
+  accounts.slice(0,5).forEach(account=>{
     const card=document.createElement('div');
     card.className='saved-account';
+    card.setAttribute('role','button');
+    card.setAttribute('tabindex','0');
     card.innerHTML=
       `<div class="saved-avatar">${(account.name||account.email||'P').charAt(0).toUpperCase()}</div>`+
       `<div class="saved-info"><div class="saved-name">${account.name||'Pirate'}</div>`+
       `<div class="saved-email">${account.email||''}</div></div>`+
       `<button type="button" class="saved-delete" aria-label="Supprimer ce compte">✕</button>`;
+
+    const openAccount=()=>window.SOL_loginRememberedAccount(account);
     card.addEventListener('click',e=>{
       if(e.target.closest('.saved-delete'))return;
-      SOL_loginRememberedAccount(account);
+      openAccount();
+    });
+    card.addEventListener('keydown',e=>{
+      if(e.key==='Enter'||e.key===' '){e.preventDefault();openAccount();}
     });
     card.querySelector('.saved-delete').addEventListener('click',e=>{
       e.stopPropagation();
-      const updated=getAccounts().filter(a=>a.email!==account.email);
+      const updated=accounts.filter(a=>a.email!==account.email);
       saveAccounts(updated);
+      localStorage.setItem('sol_accounts',JSON.stringify(updated));
       renderRememberedAccounts();
     });
     box.appendChild(card);
@@ -610,12 +630,32 @@ document.getElementById('loginBtn').onclick=solLogin;
 
 window.SOL_loginRememberedAccount=function(account){
   if(!account)return;
+
+  /* Migrate the character saved by older prototype versions. */
+  if(!account.character){
+    try{
+      const oldChar=JSON.parse(localStorage.getItem('sol_character')||'null');
+      const current=JSON.parse(localStorage.getItem('sol_current_account')||'null');
+      if(oldChar && (!current || current.email===account.email)){
+        account.character=oldChar;
+      }
+    }catch(e){}
+  }
+
   localStorage.setItem('sol_current_account',JSON.stringify(account));
-  document.querySelectorAll('.auth-modal.open').forEach(m=>m.classList.remove('open'));
-  if(account.character){
+
+  const remember=document.getElementById('rememberModal');
+  if(remember)remember.classList.remove('open');
+
+  /* Existing character = immediate game entry. */
+  if(account.character && typeof solStartGame==='function'){
     solStartGame(account);
-  }else{
-    localStorage.setItem('sol_pending_name',account.name||'');
+    return;
+  }
+
+  /* No character yet = character creation. */
+  localStorage.setItem('sol_pending_name',account.name||'');
+  if(window.SOLCharacter && typeof SOLCharacter.open==='function'){
     SOLCharacter.open();
   }
 };
@@ -775,6 +815,19 @@ document.getElementById('logoutGame')?.addEventListener('click',solDisconnect);
 
 
 
+
+
+/* Dernier filet de sécurité : cliquer n'importe où sur une carte de compte
+   lance immédiatement la connexion. */
+document.addEventListener('click',function(e){
+  const card=e.target.closest && e.target.closest('.saved-account');
+  if(!card || e.target.closest('.saved-delete'))return;
+  const cards=[...document.querySelectorAll('.saved-account')];
+  const index=cards.indexOf(card);
+  if(index<0)return;
+  const accounts=getAccounts();
+  if(accounts[index])window.SOL_loginRememberedAccount(accounts[index]);
+});
 
 </script>
 </body>
