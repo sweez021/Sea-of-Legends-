@@ -848,6 +848,84 @@ window.solStartGame = function(account){
   return result;
 };
 
+
+/* ===== SEA OF LEGENDS : BOUTON COMPTE -> ENTRÉE DIRECTE ===== */
+window.SOL_directEnter=function(account){
+  try{
+    account=account||{name:'Pirate'};
+    localStorage.setItem('sol_current_account',JSON.stringify(account));
+
+    /* Restore character if this browser already has one. */
+    try{
+      const savedChar=JSON.parse(localStorage.getItem('sol_character')||'null');
+      if(savedChar && !account.character) account.character=savedChar;
+    }catch(e){}
+
+    p.name=account.name || (account.character&&account.character.name) || 'Pirate';
+
+    /* Restore saved position when available. */
+    try{ if(typeof solLoadPosition==='function') solLoadPosition(account); }catch(e){}
+
+    game=true;
+
+    /* Hide every menu/overlay that can cover the canvas. */
+    const start=document.getElementById('start');
+    if(start){
+      start.style.display='none';
+      start.style.visibility='hidden';
+      start.style.pointerEvents='none';
+    }
+    document.querySelectorAll('.game-modal').forEach(x=>{
+      x.classList.remove('open');
+      x.style.display='none';
+      x.style.pointerEvents='none';
+    });
+    const creator=document.getElementById('characterCreator');
+    if(creator){
+      creator.classList.remove('open');
+      creator.style.display='none';
+      creator.style.pointerEvents='none';
+    }
+
+    /* The canvas is the game itself. */
+    c.style.display='block';
+    c.style.visibility='visible';
+    c.style.pointerEvents='auto';
+
+    cam.x=clamp(p.x-innerWidth/2,0,Math.max(0,world.w-innerWidth));
+    cam.y=clamp(p.y-innerHeight/2,0,Math.max(0,world.h-innerHeight));
+    updateHUD();
+    draw();
+
+    cancelAnimationFrame(window.SOLtickFrame||0);
+    last=performance.now();
+    window.SOLtickFrame=requestAnimationFrame(tick);
+  }catch(err){
+    console.error('Sea of Legends direct entry error:',err);
+    /* Even if position restoration fails, the game still opens. */
+    game=true;
+    document.getElementById('start').style.display='none';
+    c.style.display='block';
+    updateHUD();
+    draw();
+    window.SOLtickFrame=requestAnimationFrame(tick);
+  }
+};
+
+/* Capture the account panel click in the final event phase. */
+document.addEventListener('click',function(e){
+  const card=e.target.closest && e.target.closest('#rememberedAccounts .saved-account');
+  if(!card || e.target.closest('.saved-delete')) return;
+  const cards=[...document.querySelectorAll('#rememberedAccounts .saved-account')];
+  const index=cards.indexOf(card);
+  const accounts=getAccounts();
+  if(index>=0 && accounts[index]){
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    window.SOL_directEnter(accounts[index]);
+  }
+},true);
+
 </script>
 </body>
 </html>
