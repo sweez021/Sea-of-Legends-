@@ -25,6 +25,14 @@ button.secondary{background:#d9e5ef}button:active{transform:translateY(2px);box-
 input{width:100%;padding:13px;border-radius:10px;border:1px solid #557087;background:#091a29;color:white;font-size:16px;margin:10px 0 14px}
 #mobile{display:none;position:absolute;left:15px;bottom:80px;pointer-events:auto}.dpad{display:grid;grid-template-columns:52px 52px 52px;gap:5px}.dpad button{padding:12px;background:rgba(255,255,255,.85)}
 @media(max-width:700px){#stats{width:220px}#quest{width:210px;font-size:12px}#controls{display:none}#log{width:90vw;bottom:10px}#actions{right:10px;bottom:105px;flex-direction:column}#mobile{display:block}}
+
+.auth-tabs{display:flex;gap:8px;margin:18px 0 16px}
+.auth-tab{flex:1;padding:10px;background:#27445d;color:#fff;box-shadow:none}
+.auth-tab.active{background:var(--gold);color:#08131d}
+#loginForm h2,#registerForm h2{margin:8px 0 12px;font-size:20px}
+.auth-msg{min-height:20px;margin:8px 0;color:#ffd166;font-size:13px}
+.prototype-note{font-size:12px;color:#9eb1c1;margin-top:18px}
+.tagline{color:#ffd166;font-weight:700;margin-top:0}
 </style>
 </head>
 <body>
@@ -44,11 +52,28 @@ input{width:100%;padding:13px;border-radius:10px;border:1px solid #557087;backgr
 </div>
 <div id="start">
   <div class="card panel">
-    <h1>LEGENDS OF THE GRAND SEA</h1>
-    <p><b>V0.1 — Port Azure</b></p>
-    <p>Prototype jouable : déplacement, PNJ, première quête, combat, XP, niveau et boss de zone.</p>
-    <input id="nameInput" maxlength="18" placeholder="Nom de ton pirate" value="Mathyss">
-    <button id="play">⚓ Commencer l'aventure</button>
+    <h1>SEA OF LEGENDS</h1>
+    <p class="tagline">Create your legend.</p>
+    <div class="auth-tabs">
+      <button id="tabLogin" class="auth-tab active">Connexion</button>
+      <button id="tabRegister" class="auth-tab secondary">Inscription</button>
+    </div>
+    <div id="loginForm">
+      <h2>Bon retour, pirate ⚓</h2>
+      <input id="loginEmail" type="email" autocomplete="email" placeholder="Adresse e-mail">
+      <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Mot de passe">
+      <button id="loginBtn">Se connecter</button>
+      <p id="loginMsg" class="auth-msg"></p>
+    </div>
+    <div id="registerForm" style="display:none">
+      <h2>Créer ton compte 🏴‍☠️</h2>
+      <input id="regName" maxlength="18" placeholder="Nom de pirate">
+      <input id="regEmail" type="email" autocomplete="email" placeholder="Adresse e-mail">
+      <input id="regPassword" type="password" autocomplete="new-password" placeholder="Mot de passe (6 caractères min.)">
+      <button id="registerBtn">Créer mon compte</button>
+      <p id="registerMsg" class="auth-msg"></p>
+    </div>
+    <p class="prototype-note">V0.2 — Comptes locaux de démonstration. La vraie connexion multijoueur avec serveur viendra ensuite.</p>
   </div>
 </div>
 <script>
@@ -146,7 +171,51 @@ function tick(t){
  if(boss.alive&&dist(p,boss)<260){boss.cd-=dt;if(boss.cd<=0){boss.cd=1.2;p.hp-=8;log('💥 Vargos t’attaque !');if(p.hp<=0){p.hp=p.maxhp;p.x=620;p.y=760;log('☠️ Tu as été vaincu. Retour à Port Azure.')}}}
  updateHUD();draw();requestAnimationFrame(tick);
 }
-document.getElementById('play').onclick=()=>{p.name=document.getElementById('nameInput').value.trim()||'Pirate';game=true;document.getElementById('start').style.display='none';log('⚓ Trouve le capitaine Rovan à Port Azure.');updateHUD();requestAnimationFrame(tick)}
+const USER_KEY='sol_demo_user_v1';
+async function hashPassword(value){
+  const data=new TextEncoder().encode(value);
+  const buf=await crypto.subtle.digest('SHA-256',data);
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function showAuthMsg(id,msg,ok=false){
+  const el=document.getElementById(id); el.textContent=msg; el.style.color=ok?'#59d98e':'#ffd166';
+}
+function setTab(login){
+  document.getElementById('loginForm').style.display=login?'block':'none';
+  document.getElementById('registerForm').style.display=login?'none':'block';
+  document.getElementById('tabLogin').classList.toggle('active',login);
+  document.getElementById('tabRegister').classList.toggle('active',!login);
+}
+function startGame(name){
+  p.name=name||'Pirate'; game=true; document.getElementById('start').style.display='none';
+  log('⚓ Trouve le capitaine Rovan à Port Azure.'); updateHUD(); requestAnimationFrame(tick);
+}
+document.getElementById('tabLogin').onclick=()=>setTab(true);
+document.getElementById('tabRegister').onclick=()=>setTab(false);
+document.getElementById('registerBtn').onclick=async()=>{
+  const name=document.getElementById('regName').value.trim();
+  const email=document.getElementById('regEmail').value.trim().toLowerCase();
+  const pass=document.getElementById('regPassword').value;
+  if(name.length<2)return showAuthMsg('registerMsg','Choisis un nom de pirate de 2 caractères minimum.');
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))return showAuthMsg('registerMsg','Entre une adresse e-mail valide.');
+  if(pass.length<6)return showAuthMsg('registerMsg','Le mot de passe doit contenir au moins 6 caractères.');
+  const passwordHash=await hashPassword(pass);
+  localStorage.setItem(USER_KEY,JSON.stringify({name,email,passwordHash}));
+  showAuthMsg('registerMsg','Compte créé ! Tu peux maintenant te connecter.',true);
+  document.getElementById('loginEmail').value=email;
+  setTimeout(()=>setTab(true),500);
+};
+document.getElementById('loginBtn').onclick=async()=>{
+  const email=document.getElementById('loginEmail').value.trim().toLowerCase();
+  const pass=document.getElementById('loginPassword').value;
+  const raw=localStorage.getItem(USER_KEY);
+  if(!raw)return showAuthMsg('loginMsg','Aucun compte local. Clique sur « Inscription » pour commencer.');
+  const user=JSON.parse(raw), passwordHash=await hashPassword(pass);
+  if(user.email!==email || user.passwordHash!==passwordHash)
+    return showAuthMsg('loginMsg','E-mail ou mot de passe incorrect.');
+  showAuthMsg('loginMsg','Connexion réussie !',true);
+  setTimeout(()=>startGame(user.name),250);
+};
 document.getElementById('attack').onclick=attack;document.getElementById('interact').onclick=interact;
 document.querySelectorAll('#mobile button').forEach(b=>b.addEventListener('pointerdown',()=>{let k=b.dataset.k;let map={up:'w',down:'s',left:'a',right:'d'};keys[map[k]]=true;setTimeout(()=>keys[map[k]]=false,180)}));
 </script>
