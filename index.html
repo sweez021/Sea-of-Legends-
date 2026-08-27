@@ -292,7 +292,7 @@ html,body{width:100%;height:100%;overflow:hidden!important} body{margin:0}\n
         <input id="regEmail" type="email" autocomplete="email" placeholder="Entrez votre e-mail">
         <label>MOT DE PASSE</label>
         <input id="regPassword" type="password" autocomplete="new-password" placeholder="Créez un mot de passe">
-        <button id="registerBtn" class="action blue">CRÉER MON COMPTE</button>
+        <button id="registerBtn" type="button" class="action blue">CRÉER MON COMPTE</button>
         <p id="registerMsg"></p>
       </div>
     </div>
@@ -816,7 +816,7 @@ document.getElementById('registerBtn').onclick=async()=>{
   SOLCharacter.open();
 };
 
-document.getElementById('loginBtn').onclick=solLogin;
+document.getElementById('loginBtn').addEventListener('click',solLogin);
 
 window.SOL_loginRememberedAccount=function(account){
   if(!account)return;
