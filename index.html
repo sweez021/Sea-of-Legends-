@@ -438,35 +438,50 @@ function tick(t){
 }
 const USER_KEY='sol_demo_user_v1';
 const ACCOUNTS_KEY='sol_demo_accounts_v1';
-async function hashPassword(value){const data=new TextEncoder().encode(value);const buf=await crypto.subtle.digest('SHA-256',data);return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('')}
-function showAuthMsg(id,msg,ok=false){const el=document.getElementById(id);el.textContent=msg;el.style.color=ok?'#66e39a':'#ffd166'}
-function getAccounts(){try{return JSON.parse(localStorage.getItem(ACCOUNTS_KEY)||'[]')}catch(e){return []}}
+
+async function hashPassword(value){
+  const data=new TextEncoder().encode(value);
+  const buf=await crypto.subtle.digest('SHA-256',data);
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function showAuthMsg(id,msg,ok=false){
+  const el=document.getElementById(id);
+  if(el){el.textContent=msg;el.style.color=ok?'#66e39a':'#ffd166';}
+}
+function getAccounts(){
+  try{return JSON.parse(localStorage.getItem(ACCOUNTS_KEY)||'[]')}catch(e){return []}
+}
 function saveAccounts(a){localStorage.setItem(ACCOUNTS_KEY,JSON.stringify(a.slice(0,5)))}
-function rememberAccount(u){let a=getAccounts().filter(x=>x.email!==u.email);a.unshift({name:u.name,email:u.email});saveAccounts(a);renderRememberedAccounts()}
+function rememberAccount(u){
+  let a=getAccounts().filter(x=>x.email!==u.email);
+  a.unshift({...u});
+  saveAccounts(a);
+  renderRememberedAccounts();
+}
 function renderRememberedAccounts(){
   const box=document.getElementById('rememberedAccounts');
   const empty=document.getElementById('accountsEmpty');
-  if(!box) return;
-  let accounts=[];
-  try{accounts=JSON.parse(localStorage.getItem('sol_accounts')||'[]')}catch(e){accounts=[]}
+  if(!box)return;
+  const accounts=getAccounts();
   box.innerHTML='';
-  if(!accounts.length){
-    if(empty) empty.style.display='block';
-    return;
-  }
-  if(empty) empty.style.display='none';
-  accounts.slice(0,5).forEach((account,i)=>{
+  if(!accounts.length){if(empty)empty.style.display='block';return;}
+  if(empty)empty.style.display='none';
+  accounts.forEach((account,i)=>{
     const card=document.createElement('div');
     card.className='saved-account';
-    card.innerHTML=`<div class="saved-avatar">${(account.name||account.email||'P').charAt(0).toUpperCase()}</div>
-      <div class="saved-info"><div class="saved-name">${account.name||'Pirate'}</div>
-      <div class="saved-email">${account.email||''}</div></div>
-      <button type="button" class="saved-delete" aria-label="Supprimer ce compte">✕</button>`;
-    card.addEventListener('click',()=>SOL_loginRememberedAccount(account));
-    card.querySelector('.saved-delete').addEventListener('click',(e)=>{
+    card.innerHTML=
+      `<div class="saved-avatar">${(account.name||account.email||'P').charAt(0).toUpperCase()}</div>`+
+      `<div class="saved-info"><div class="saved-name">${account.name||'Pirate'}</div>`+
+      `<div class="saved-email">${account.email||''}</div></div>`+
+      `<button type="button" class="saved-delete" aria-label="Supprimer ce compte">✕</button>`;
+    card.addEventListener('click',e=>{
+      if(e.target.closest('.saved-delete'))return;
+      SOL_loginRememberedAccount(account);
+    });
+    card.querySelector('.saved-delete').addEventListener('click',e=>{
       e.stopPropagation();
-      accounts.splice(i,1);
-      localStorage.setItem('sol_accounts',JSON.stringify(accounts));
+      const updated=getAccounts().filter(a=>a.email!==account.email);
+      saveAccounts(updated);
       renderRememberedAccounts();
     });
     box.appendChild(card);
@@ -548,7 +563,32 @@ document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',(
 document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>b.closest('.game-modal').classList.remove('open')));
 document.querySelectorAll('.game-modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open')}));
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.game-modal.open').forEach(m=>m.classList.remove('open'))});
-document.getElementById('registerBtn').onclick=async()=>{const name=document.getElementById('regName').value.trim(),email=document.getElementById('regEmail').value.trim().toLowerCase(),pass=document.getElementById('regPassword').value;if(name.length<2)return showAuthMsg('registerMsg','Nom de pirate trop court.');if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))return showAuthMsg('registerMsg','Adresse e-mail invalide.');if(pass.length<6)return showAuthMsg('registerMsg','Mot de passe : 6 caractères minimum.');if(getAccounts().some(a=>a.email===email))return showAuthMsg('registerMsg','Ce compte est déjà mémorisé sur cet appareil.');const u={name,email,passwordHash:await hashPassword(pass)};localStorage.setItem(USER_KEY,JSON.stringify(u));rememberAccount(u);document.getElementById('loginEmail').value=email;showAuthMsg('registerMsg','Compte créé ! Connecte-toi pour commencer.',true)}
+
+
+async function solLogin(){
+  const email=document.getElementById('loginEmail').value.trim().toLowerCase();
+  const pass=document.getElementById('loginPassword').value;
+  if(!email || !pass)return showAuthMsg('loginMsg','Entre ton e-mail et ton mot de passe.');
+  const raw=localStorage.getItem(USER_KEY);
+  if(!raw)return showAuthMsg('loginMsg','Aucun compte local. Crée d’abord ton compte.');
+  let u;
+  try{u=JSON.parse(raw)}catch(e){return showAuthMsg('loginMsg','Compte local invalide.')}
+  const hashed=await hashPassword(pass);
+  if(u.email!==email || u.passwordHash!==hashed)
+    return showAuthMsg('loginMsg','E-mail ou mot de passe incorrect.');
+  let account=getAccounts().find(a=>a.email===email)||{name:u.name,email:u.email};
+  if(u.character)account.character=u.character;
+  localStorage.setItem('sol_current_account',JSON.stringify(account));
+  if(document.getElementById('rememberMe').checked)rememberAccount(account);
+  document.querySelectorAll('.auth-modal.open').forEach(m=>m.classList.remove('open'));
+  if(account.character){
+    solStartGame(account);
+  }else{
+    localStorage.setItem('sol_pending_name',account.name||'');
+    SOLCharacter.open();
+  }
+}
+
 document.getElementById('registerBtn').onclick=async()=>{
   const name=document.getElementById('regName').value.trim();
   const email=document.getElementById('regEmail').value.trim().toLowerCase();
@@ -556,64 +596,35 @@ document.getElementById('registerBtn').onclick=async()=>{
   if(name.length<2)return showAuthMsg('registerMsg','Nom de pirate trop court.');
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))return showAuthMsg('registerMsg','Adresse e-mail invalide.');
   if(pass.length<6)return showAuthMsg('registerMsg','Mot de passe : 6 caractères minimum.');
-  if(getAccounts().some(a=>a.email===email))return showAuthMsg('registerMsg','Ce compte est déjà mémorisé sur cet appareil.');
+  if(getAccounts().some(a=>a.email===email))return showAuthMsg('registerMsg','Ce compte existe déjà.');
   const u={name,email,passwordHash:await hashPassword(pass)};
   localStorage.setItem(USER_KEY,JSON.stringify(u));
   rememberAccount(u);
-  document.getElementById('loginEmail').value=email;
-  document.getElementById('loginPassword').value=pass;
-  showAuthMsg('registerMsg','Compte créé ! Connexion en cours...',true);
-  setTimeout(()=>solHandleLogin(u),250);
+  localStorage.setItem('sol_current_account',JSON.stringify({name,email}));
+  document.querySelectorAll('.auth-modal.open').forEach(m=>m.classList.remove('open'));
+  localStorage.setItem('sol_pending_name',name);
+  SOLCharacter.open();
 };
 
-async function solHandleLogin(accountOrUser){
-  try{
-    let u=accountOrUser;
-    if(!u){
-      const email=document.getElementById('loginEmail').value.trim().toLowerCase();
-      const pass=document.getElementById('loginPassword').value;
-      const raw=localStorage.getItem(USER_KEY);
-      if(!raw)return showAuthMsg('loginMsg','Aucun compte local. Crée d’abord ton compte.');
-      u=JSON.parse(raw);
-      const hashed=await hashPassword(pass);
-      if(u.email!==email || u.passwordHash!==hashed)
-        return showAuthMsg('loginMsg','E-mail ou mot de passe incorrect.');
-    }
-    let accounts=getAccounts();
-    let account=accounts.find(a=>a.email===u.email)||u;
-    const currentRaw=localStorage.getItem('sol_current_account');
-    try{
-      const current=currentRaw?JSON.parse(currentRaw):null;
-      if(current && current.email===account.email && current.character) account=current;
-    }catch(e){}
-    solSetCurrent(account);
-    showAuthMsg('loginMsg','Connexion réussie !',true);
-    if(account.character){
-      solStartGame(account);
-    }else{
-      localStorage.setItem('sol_pending_name',account.name||'');
-      document.querySelectorAll('.auth-modal.open').forEach(modal=>modal.classList.remove('open'));
-      SOLCharacter.open();
-    }
-  }catch(err){
-    console.error(err);
-    showAuthMsg('loginMsg','Une erreur est survenue. Recharge la page puis réessaie.');
-  }
-}
+document.getElementById('loginBtn').onclick=solLogin;
 
-document.getElementById('loginBtn').onclick=()=>solHandleLogin(null);
+window.SOL_loginRememberedAccount=function(account){
+  if(!account)return;
+  localStorage.setItem('sol_current_account',JSON.stringify(account));
+  document.querySelectorAll('.auth-modal.open').forEach(m=>m.classList.remove('open'));
+  if(account.character){
+    solStartGame(account);
+  }else{
+    localStorage.setItem('sol_pending_name',account.name||'');
+    SOLCharacter.open();
+  }
+};
+
 renderRememberedAccounts();
+
 document.getElementById('attack').onclick=attack;document.getElementById('interact').onclick=interact;
 document.querySelectorAll('#mobile button').forEach(b=>b.addEventListener('pointerdown',()=>{let k=b.dataset.k;let map={up:'w',down:'s',left:'a',right:'d'};keys[map[k]]=true;setTimeout(()=>keys[map[k]]=false,180)}));
 
-function SOL_afterLogin(){
-  const existing=localStorage.getItem('sol_character');
-  if(existing){
-    document.getElementById('start').style.display='none';
-  }else{
-    SOLCharacter.open();
-  }
-}
 
 
 function SOL_saveRememberedAccount(){
@@ -764,17 +775,6 @@ document.getElementById('logoutGame')?.addEventListener('click',solDisconnect);
 
 
 
-
-/* Compatibilité avec l'ancienne V0.2 : évite toute erreur si startGame est appelé. */
-window.startGame=function(name){
-  const accounts=getAccounts();
-  const account=accounts.find(a=>a.name===name)||accounts[0]||{name:name||'Pirate'};
-  if(account.character) solStartGame(account);
-  else {
-    localStorage.setItem('sol_pending_name',account.name||name||'');
-    SOLCharacter.open();
-  }
-};
 
 </script>
 </body>
